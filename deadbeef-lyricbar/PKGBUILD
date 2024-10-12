@@ -1,0 +1,45 @@
+# Maintainer: wind_mask <YOU KNOW WHO>
+# Contributor: Deposite Pirate <dpirate at metalpunks dot info>
+# Upstream: https://git.metalpunks.info/arch-ports
+
+_pkgname=deadbeef-lyricbar
+pkgname=deadbeef-plugin-lyricbar-zhanxh-git
+pkgver=r189.g2df7663
+pkgrel=1
+pkgdesc="DeaDBeeF lyric bar plugin from zhanxh"
+arch=('i686' 'x86_64')
+url="https://github.com/zhanxh/deadbeef-lyricbar"
+license=('MIT')
+depends=('deadbeef' 'libxml++')
+provides=('deadbeef-plugin-lyricbar')
+conflicts=('deadbeef-plugin-lyricbar')
+optdepends=('gtkmm3' 'gtkmm')
+makedepends=('git' 'pkgconf' 'gtkmm3' 'gtkmm')
+source=("${_pkgname}::git+${url}"
+  "0001-fix-fix-Werror-format-security-to-use-makepkg.patch")
+sha256sums=('SKIP'
+  '2289a6ada7be79bd523b6476f76dca047afbddb0d6f807631060d82bfa6b6e79')
+pkgver() {
+  cd "${_pkgname}"
+  printf "r%s.g%s" \
+    "$(git rev-list --count HEAD)" \
+    "$(git rev-parse --short HEAD)"
+
+}
+prepare() {
+  cd "${_pkgname}"
+  git apply ../0001-fix-fix-Werror-format-security-to-use-makepkg.patch
+}
+build() {
+  cd "${_pkgname}"
+  make clean
+  make gtk3
+}
+
+package() {
+  cd "${_pkgname}"
+  mkdir -p "${pkgdir}/usr/share/licenses/${pkgname}"
+  cp ./LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  make prefix="${pkgdir}/usr" install
+  chmod 755 ${pkgdir}/usr/lib/deadbeef/ddb_lyricbar_gtk3.so
+}

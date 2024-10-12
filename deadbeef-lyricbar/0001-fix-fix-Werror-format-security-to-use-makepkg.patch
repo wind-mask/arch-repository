@@ -1,0 +1,29 @@
+From ee4995c0dbc2073dfa1eaaee6f6ae2ac6e51007a Mon Sep 17 00:00:00 2001
+From: wind_mask <wind_mask_proton@proton.me>
+Date: Sat, 12 Oct 2024 19:52:18 +0800
+Subject: [PATCH] =?UTF-8?q?fix:=20=F0=9F=90=9B=20fix=20-Werror=3Dformat-se?=
+ =?UTF-8?q?curity=20to=20use=20makepkg?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ src/ui.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/ui.cpp b/src/ui.cpp
+index ede5ee5..9ca7c70 100644
+--- a/src/ui.cpp
++++ b/src/ui.cpp
+@@ -246,7 +246,7 @@ GtkWidget *construct_lyricbar() {
+ 	");
+ 
+ 	//load css
+-	auto data = g_strdup_printf(cssconfig.c_str());
++	auto data = g_strdup_printf("%s", cssconfig.c_str());
+ 
+ 	RefPtr<Gtk::CssProvider> cssProvider = Gtk::CssProvider::create();
+ 	cssProvider->load_from_data(data);
+-- 
+2.47.0
+
