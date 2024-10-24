@@ -4,7 +4,7 @@
 
 _pkgname=deadbeef-lyricbar
 pkgname=deadbeef-plugin-lyricbar-wind-mask-git
-pkgver=r193.g130d49a
+pkgver=r194.gb28f9c9
 pkgrel=1
 pkgdesc="DeaDBeeF lyric bar plugin from wind_mask's fork"
 arch=('i686' 'x86_64')
