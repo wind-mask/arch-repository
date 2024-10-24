@@ -3,22 +3,20 @@
 # Upstream: https://git.metalpunks.info/arch-ports
 
 _pkgname=deadbeef-lyricbar
-pkgname=deadbeef-plugin-lyricbar-zhanxh-git
-pkgver=r189.g2df7663
+pkgname=deadbeef-plugin-lyricbar-wind-mask-git
+pkgver=r193.g130d49a
 pkgrel=1
-pkgdesc="DeaDBeeF lyric bar plugin from zhanxh"
+pkgdesc="DeaDBeeF lyric bar plugin from wind_mask's fork"
 arch=('i686' 'x86_64')
-url="https://github.com/zhanxh/deadbeef-lyricbar"
+url="https://github.com/wind-mask/deadbeef-lyricbar"
 license=('MIT')
 depends=('deadbeef' 'libxml++')
 provides=('deadbeef-plugin-lyricbar')
 conflicts=('deadbeef-plugin-lyricbar')
 optdepends=('gtkmm3' 'gtkmm')
 makedepends=('git' 'pkgconf' 'gtkmm3' 'gtkmm')
-source=("${_pkgname}::git+${url}"
-  "0001-fix-fix-Werror-format-security-to-use-makepkg.patch")
-sha256sums=('SKIP'
-  '2289a6ada7be79bd523b6476f76dca047afbddb0d6f807631060d82bfa6b6e79')
+source=("${_pkgname}::git+${url}")
+sha256sums=('SKIP')
 pkgver() {
   cd "${_pkgname}"
   printf "r%s.g%s" \
@@ -28,7 +26,6 @@ pkgver() {
 }
 prepare() {
   cd "${_pkgname}"
-  git apply ../0001-fix-fix-Werror-format-security-to-use-makepkg.patch
 }
 build() {
   cd "${_pkgname}"
