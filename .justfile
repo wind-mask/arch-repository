@@ -1,4 +1,4 @@
 default:
     @just --list
 clean:
-    rm -rf */src */pkg */*.pkg.tar.zst
+    rm -rf */src */pkg */*.pkg.tar.zst */*.tar.gz
