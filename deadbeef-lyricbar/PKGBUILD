@@ -4,7 +4,7 @@
 
 _pkgname=deadbeef-lyricbar
 pkgname=deadbeef-plugin-lyricbar-wind-mask-git
-pkgver=r194.gb28f9c9
+pkgver=r196.g00aa3b3
 pkgrel=1
 pkgdesc="DeaDBeeF lyric bar plugin from wind_mask's fork"
 arch=('i686' 'x86_64')
@@ -38,5 +38,4 @@ package() {
   mkdir -p "${pkgdir}/usr/share/licenses/${pkgname}"
   cp ./LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
   make prefix="${pkgdir}/usr" install
-  chmod 755 ${pkgdir}/usr/lib/deadbeef/ddb_lyricbar_gtk3.so
 }
