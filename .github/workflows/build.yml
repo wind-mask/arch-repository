@@ -1,0 +1,58 @@
+name: Build Packages
+
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  # ===============================================================
+  # Job 1: 查找所有包含 PKGBUILD 的目录
+  # ===============================================================
+  find_packages:
+    runs-on: ubuntu-latest
+    outputs:
+      # 输出一个名为 matrix 的变量，它是一个包含所有包目录路径的 JSON 数组
+      matrix: ${{ steps.set_matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate matrix of package directories
+        id: set_matrix
+        run: |
+          dirs=$(find . -name PKGBUILD -exec dirname {} \; | jq -R . | jq -s)
+          echo test:matrix=${dirs}
+          echo matrix=${dirs} >> $GITHUB_OUTPUT
+
+  # ===============================================================
+  # Job 2: 根据找到的目录列表，为每个包进行构建
+  # ===============================================================
+  build_package:
+    # 依赖 find_packages 任务成功完成
+    needs: find_packages
+    runs-on: ubuntu-latest
+    # 使用上一个 job 输出的 JSON 数组来创建动态构建矩阵
+    strategy:
+      fail-fast: false # 设置为 false，这样即使一个包构建失败，其他包的构建也会继续
+      matrix:
+        # fromJson 函数将 JSON 字符串解析为 Actions 可以使用的数组/对象
+        package_dir: ${{ fromJson(needs.find_packages.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build package in ${{ matrix.package_dir }}
+        # 使用你指定的 Action
+        uses: heyhusen/archlinux-package-action@v2
+        # 关键：设置 Action 的工作目录
+        with:
+          path: ${{ matrix.package_dir }}
+          updpkgsums: true
+          aur: true
