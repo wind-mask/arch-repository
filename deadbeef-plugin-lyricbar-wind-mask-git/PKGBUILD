@@ -14,7 +14,7 @@ depends=('deadbeef' 'libxml++')
 provides=('deadbeef-plugin-lyricbar')
 conflicts=('deadbeef-plugin-lyricbar')
 optdepends=('gtkmm3' 'gtkmm')
-makedepends=('git' 'pkgconf' 'gtkmm3' 'gtkmm')
+makedepends=('git' 'pkgconf' 'gtkmm3' 'gtkmm' 'taglib')
 source=("${_pkgname}::git+${url}")
 sha256sums=('SKIP')
 pkgver() {
