@@ -1,0 +1,27 @@
+# Maintainer: wind_mask <YOU KONW WHO>
+_pkgname=cclip
+pkgname=cclip
+pkgver=3.0.0
+pkgrel=1
+epoch=1
+pkgdesc="clipboard manager for wayland"
+arch=(i686 x86_64)
+url="https://github.com/heather7283/$pkgname"
+license=(GPL3)
+depends=(glibc
+		 wayland
+		 sqlite)
+makedepends=(git meson)
+source=("${pkgname}-${pkgver}.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz")
+b2sums=('fe0c230dacfe88dc51fc8ae6af6a349614ed6d43afa317f8050220d19f5c409a243fa9621612a4f7b81eeb26780bd96d5337d66a654c2e7ec6fef08885cde0bc')
+
+build(){
+	cd "cclip-$pkgver"
+	meson setup --buildtype=release build
+	meson compile -C build
+}
+package(){
+	cd "cclip-$pkgver"
+	install -Dm0755 -t "$pkgdir/usr/bin/" build/cclip
+	install -Dm0755 -t "$pkgdir/usr/bin/" build/cclipd
+}
