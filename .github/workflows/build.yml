@@ -1,47 +1,78 @@
 name: Build Packages
 
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
   # ===============================================================
-  # Job 1: 查找所有包含 PKGBUILD 的目录
+  # Job 1: 查找包含更新的 PKGBUILD 的目录
   # ===============================================================
   find_packages:
     runs-on: ubuntu-latest
     outputs:
-      # 输出一个名为 matrix 的变量，它是一个包含所有包目录路径的 JSON 数组
       matrix: ${{ steps.set_matrix.outputs.matrix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史以便比较变更
 
-      - name: Generate matrix of package directories
+      - name: Generate matrix of changed package directories
         id: set_matrix
         run: |
-          dirs=$(find . -name PKGBUILD -exec dirname {} \; | jq -R . | jq -s)
-          echo test:matrix=${dirs}
-          echo matrix=${dirs} >> $GITHUB_OUTPUT
+          # 对于 pull_request 事件，比较目标分支和当前分支
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_SHA=${{ github.event.pull_request.base.sha }}
+            HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          else
+            # 对于 push 事件，获取前一个提交
+            BASE_SHA=$(git rev-parse ${{ github.sha }}^)
+            HEAD_SHA=${{ github.sha }}
+          fi
+          
+          echo "Comparing changes between ${BASE_SHA} and ${HEAD_SHA}"
+          
+          # 获取更改的文件列表
+          CHANGED_FILES=$(git diff --name-only ${BASE_SHA} ${HEAD_SHA})
+          
+          # 查找所有包含 PKGBUILD 的目录
+          ALL_PKG_DIRS=$(find . -name PKGBUILD -exec dirname {} \;)
+          
+          # 筛选出有变更的包目录
+          CHANGED_PKG_DIRS=()
+          for pkg_dir in ${ALL_PKG_DIRS}; do
+            # 检查该包目录下是否有任何文件被修改
+            if echo "$CHANGED_FILES" | grep -q "^${pkg_dir#./}"; then
+              CHANGED_PKG_DIRS+=("$pkg_dir")
+            fi
+          done
+          
+          # 如果没有变更的包，则添加一个空占位符以避免矩阵为空
+          if [ ${#CHANGED_PKG_DIRS[@]} -eq 0 ]; then
+            echo "No package directories changed"
+            echo "matrix=[]" >> $GITHUB_OUTPUT
+          else
+            # 将变更的包目录转换为 JSON 数组
+            MATRIX_JSON=$(printf '%s\n' "${CHANGED_PKG_DIRS[@]}" | jq -R . | jq -s .)
+            echo "Changed package directories: ${MATRIX_JSON}"
+            echo "matrix=${MATRIX_JSON}" >> $GITHUB_OUTPUT
+          fi
 
   # ===============================================================
-  # Job 2: 根据找到的目录列表，为每个包进行构建
+  # Job 2: 根据找到的目录列表，为每个更新的包进行构建
   # ===============================================================
   build_package:
-    # 依赖 find_packages 任务成功完成
     needs: find_packages
     runs-on: ubuntu-latest
-    # 使用上一个 job 输出的 JSON 数组来创建动态构建矩阵
+    # 只有当矩阵不为空时才运行
+    if: ${{ fromJson(needs.find_packages.outputs.matrix)[0] != null }}
     strategy:
-      fail-fast: false # 设置为 false，这样即使一个包构建失败，其他包的构建也会继续
+      fail-fast: false
       matrix:
-        # fromJson 函数将 JSON 字符串解析为 Actions 可以使用的数组/对象
         package_dir: ${{ fromJson(needs.find_packages.outputs.matrix) }}
 
     steps:
@@ -49,9 +80,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build package in ${{ matrix.package_dir }}
-        # 使用你指定的 Action
         uses: heyhusen/archlinux-package-action@v2
-        # 关键：设置 Action 的工作目录
         with:
           path: ${{ matrix.package_dir }}
           updpkgsums: true
