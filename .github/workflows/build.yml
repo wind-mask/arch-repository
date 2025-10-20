@@ -59,7 +59,7 @@ jobs:
             # 将变更的包目录转换为 JSON 数组
             MATRIX_JSON=$(printf '%s\n' "${CHANGED_PKG_DIRS[@]}" | jq -R . | jq -s .)
             echo "Changed package directories: ${MATRIX_JSON}"
-            echo "matrix=${MATRIX_JSON}" >> $GITHUB_OUTPUT
+            echo matrix=${MATRIX_JSON} >> $GITHUB_OUTPUT
           fi
 
   # ===============================================================
