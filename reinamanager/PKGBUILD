@@ -1,0 +1,22 @@
+# Maintainer: wind_mask <YOU KONW WHO>
+pkgname=reinamanager
+_pkgname=ReinaManager
+pkgver=0.13.0_linux_0
+_pkgver=0.13.0
+pkgrel=1
+pkgdesc="A galgame/visual-novel manager,Under development......"
+arch=('x86_64' 'aarch64')
+url="https://github.com/wind-mask/${_pkgname}"
+license=('AGPL-3.0-or-later')
+depends=('cairo'  'gdk-pixbuf2' 'glib2' 'gtk3' 'hicolor-icon-theme' 'webkit2gtk-4.1' 'libsoup3' 'libxcb' 'glibc' 'gcc-libs')
+options=('!strip' '!debug')
+# ReinaManager_0.13.0_amd64.deb
+source_x86_64=("${url}/releases/download/v${pkgver//_/-}/${_pkgname}_${_pkgver}_amd64.deb")
+source_aarch64=("${url}/releases/download/v${pkgver//_/-}/${_pkgname}_${_pkgver}_arm64.deb")
+sha256sums_x86_64=('c6d7dda834f44670fb1cf6f7601ab6504788aedeac6d409f5fa363a8cb5edf6a')
+sha256sums_aarch64=('9484b6dbc2ff087a8ea2f461e084c9137947f619382231bb52a832e96194b06b')
+package() {
+  # Extract package data
+  tar -xvf data.tar.gz -C "${pkgdir}"
+
+}
