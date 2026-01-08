@@ -2,10 +2,21 @@ name: Build Packages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
+    inputs:
+      build_packages:
+        description: "Packages to build,split by ','"
+        required: true
+        default: ""
+        type: string
+      build_all_packages:
+        description: "build all Packages"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   # ===============================================================
@@ -19,46 +30,64 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 获取完整历史以便比较变更
+          fetch-depth: 0 # 获取完整历史以便比较变更
 
-      - name: Generate matrix of changed package directories
+      - name: Generate matrix of package directories
         id: set_matrix
         run: |
-          # 对于 pull_request 事件，比较目标分支和当前分支
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BASE_SHA=${{ github.event.pull_request.base.sha }}
-            HEAD_SHA=${{ github.event.pull_request.head.sha }}
-          else
-            # 对于 push 事件，获取前一个提交
-            BASE_SHA=$(git rev-parse ${{ github.sha }}^)
-            HEAD_SHA=${{ github.sha }}
-          fi
-          
-          echo "Comparing changes between ${BASE_SHA} and ${HEAD_SHA}"
-          
-          # 获取更改的文件列表
-          CHANGED_FILES=$(git diff --name-only ${BASE_SHA} ${HEAD_SHA})
-          
           # 查找所有包含 PKGBUILD 的目录
           ALL_PKG_DIRS=$(find . -name PKGBUILD -exec dirname {} \;)
-          
-          # 筛选出有变更的包目录
-          CHANGED_PKG_DIRS=()
-          for pkg_dir in ${ALL_PKG_DIRS}; do
-            # 检查该包目录下是否有任何文件被修改
-            if echo "$CHANGED_FILES" | grep -q "^${pkg_dir#./}"; then
-              CHANGED_PKG_DIRS+=("$pkg_dir")
+
+          # 手动触发时根据 inputs 决定构建哪些包
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ github.event.inputs.build_all_packages }}" == "true" ]]; then
+              # 构建所有包
+              SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
+            else
+              # 根据输入的包名列表构建
+              IFS=',' read -ra INPUT_PKGS <<< "${{ github.event.inputs.build_packages }}"
+              SELECTED_PKG_DIRS=()
+              for pkg in "${INPUT_PKGS[@]}"; do
+                pkg=$(echo "$pkg" | xargs) # 去除空格
+                if [[ -d "./$pkg" && -f "./$pkg/PKGBUILD" ]]; then
+                  SELECTED_PKG_DIRS+=("./$pkg")
+                fi
+              done
             fi
-          done
-          
-          # 如果没有变更的包，则添加一个空占位符以避免矩阵为空
-          if [ ${#CHANGED_PKG_DIRS[@]} -eq 0 ]; then
-            echo "No package directories changed"
+          else
+            # 对于 pull_request 事件，比较目标分支和当前分支
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              BASE_SHA=${{ github.event.pull_request.base.sha }}
+              HEAD_SHA=${{ github.event.pull_request.head.sha }}
+            else
+              # 对于 push 事件，获取前一个提交
+              BASE_SHA=$(git rev-parse ${{ github.sha }}^)
+              HEAD_SHA=${{ github.sha }}
+            fi
+
+            echo "Comparing changes between ${BASE_SHA} and ${HEAD_SHA}"
+
+            # 获取更改的文件列表
+            CHANGED_FILES=$(git diff --name-only ${BASE_SHA} ${HEAD_SHA})
+
+            # 筛选出有变更的包目录
+            SELECTED_PKG_DIRS=()
+            for pkg_dir in ${ALL_PKG_DIRS}; do
+              # 检查该包目录下是否有任何文件被修改
+              if echo "$CHANGED_FILES" | grep -q "^${pkg_dir#./}"; then
+                SELECTED_PKG_DIRS+=("$pkg_dir")
+              fi
+            done
+          fi
+
+          # 如果没有选中的包，则输出空数组
+          if [ ${#SELECTED_PKG_DIRS[@]} -eq 0 ]; then
+            echo "No package directories selected"
             echo "matrix=[]" >> $GITHUB_OUTPUT
           else
-            # 将变更的包目录转换为 JSON 数组
-            MATRIX_JSON=$(printf '%s\n' "${CHANGED_PKG_DIRS[@]}" | jq -R . | jq -s .)
-            echo "Changed package directories: ${MATRIX_JSON}"
+            # 将选中的包目录转换为 JSON 数组
+            MATRIX_JSON=$(printf '%s\n' "${SELECTED_PKG_DIRS[@]}" | jq -R . | jq -s .)
+            echo "Selected package directories: ${MATRIX_JSON}"
             echo matrix=${MATRIX_JSON} >> $GITHUB_OUTPUT
           fi
 
@@ -85,3 +114,4 @@ jobs:
           path: ${{ matrix.package_dir }}
           updpkgsums: true
           aur: true
+          srcinfo: true
