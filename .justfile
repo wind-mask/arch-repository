@@ -9,6 +9,6 @@ default:
 build package=".":
     ls | where type == dir | where {|d| $d.name =~ {{package}} } |where { |d| cd $d.name;ls | any { |n| $n.name == PKGBUILD }} | par-each { |p| cd $p.name;makepkg | complete | insert name $p.name}
 
-    
+
 clean:
     rm -rf */src */pkg */*.pkg.tar.zst */*.tar.gz */*.log
