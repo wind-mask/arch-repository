@@ -60,24 +60,71 @@ jobs:
               BASE_SHA=${{ github.event.pull_request.base.sha }}
               HEAD_SHA=${{ github.event.pull_request.head.sha }}
             else
-              # 对于 push 事件，获取前一个提交
-              BASE_SHA=$(git rev-parse ${{ github.sha }}^)
-              HEAD_SHA=${{ github.sha }}
+              # 对于 push 事件，使用 push 前后的分支位置进行比较
+              # 这样可以正确处理一次 push 多个 commit 的情况
+              BASE_SHA=${{ github.event.before }}
+              HEAD_SHA=${{ github.event.after }}
+
+              # 处理特殊情况：
+              # 1. 新分支首次 push（before 为全零）
+              # 2. force push 导致原 commit 不存在
+              if [[ "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+                echo "New branch push, building all packages"
+                SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
+              elif ! git cat-file -t "$BASE_SHA" &>/dev/null; then
+                echo "Force push detected (before SHA not found)"
+
+                # 尝试找到未被重写的 commit 作为 base
+                # 通过 jq 获取 commits 数组长度
+                PUSH_COMMITS_JSON='${{ toJson(github.event.commits) }}'
+                PUSH_COMMITS_COUNT=$(echo "$PUSH_COMMITS_JSON" | jq '. | length')
+                echo "This push contains ${PUSH_COMMITS_COUNT} commits"
+
+                # HEAD~N 应该是第一个未被重写的 commit
+                if [[ "$PUSH_COMMITS_COUNT" -gt 0 ]]; then
+                  POTENTIAL_BASE=$(git rev-parse "HEAD~${PUSH_COMMITS_COUNT}" 2>/dev/null)
+
+                  if [[ -n "$POTENTIAL_BASE" ]] && git cat-file -t "$POTENTIAL_BASE" &>/dev/null; then
+                    echo "Found potential base commit: ${POTENTIAL_BASE}"
+                    BASE_SHA=$POTENTIAL_BASE
+                  fi
+                fi
+
+                # 如果无法通过回溯找到 base，尝试从 push event 获取变更文件
+                if [[ -z "${BASE_SHA:-}" ]] || ! git cat-file -t "$BASE_SHA" &>/dev/null; then
+                  echo "Could not find base commit, trying push event commits"
+                  if [[ "$PUSH_COMMITS_JSON" != "null" && "$PUSH_COMMITS_JSON" != "[]" ]]; then
+                    CHANGED_FILES=$(echo "$PUSH_COMMITS_JSON" | jq -r '.[].added[], .[].modified[]' 2>/dev/null | sort -u)
+                    if [[ -n "$CHANGED_FILES" ]]; then
+                      echo "Using file changes from push event"
+                    fi
+                  fi
+
+                  # 如果仍然无法获取变更，构建所有包
+                  if [[ -z "${CHANGED_FILES:-}" ]]; then
+                    echo "Cannot determine changes, building all packages"
+                    SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
+                  fi
+                fi
+              fi
             fi
 
-            echo "Comparing changes between ${BASE_SHA} and ${HEAD_SHA}"
-
-            # 获取更改的文件列表
-            CHANGED_FILES=$(git diff --name-only ${BASE_SHA} ${HEAD_SHA})
-
-            # 筛选出有变更的包目录
-            SELECTED_PKG_DIRS=()
-            for pkg_dir in ${ALL_PKG_DIRS}; do
-              # 检查该包目录下是否有任何文件被修改
-              if echo "$CHANGED_FILES" | grep -q "^${pkg_dir#./}"; then
-                SELECTED_PKG_DIRS+=("$pkg_dir")
+            # 如果还没有确定 SELECTED_PKG_DIRS，则通过 diff 获取变更
+            if [[ ${#SELECTED_PKG_DIRS[@]} -eq 0 ]]; then
+              # 如果 CHANGED_FILES 还没设置，通过 git diff 获取
+              if [[ -z "${CHANGED_FILES:-}" && -n "${BASE_SHA:-}" ]]; then
+                echo "Comparing changes between ${BASE_SHA} and ${HEAD_SHA}"
+                CHANGED_FILES=$(git diff --name-only ${BASE_SHA} ${HEAD_SHA})
               fi
-            done
+
+              # 筛选出有变更的包目录
+              for pkg_dir in ${ALL_PKG_DIRS}; do
+                # 检查该包目录下是否有任何文件被修改
+                if echo "$CHANGED_FILES" | grep -q "^${pkg_dir#./}"; then
+                  SELECTED_PKG_DIRS+=("$pkg_dir")
+                fi
+              done
+            fi
           fi
 
           # 如果没有选中的包，则输出空数组
