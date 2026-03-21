@@ -1,20 +1,18 @@
 # Maintainer: wind_mask <YOU KONW WHO>
 pkgname=reinamanager
 _pkgname=ReinaManager
-pkgver=0.16.3_linux_0
-_pkgver=0.16.3
+pkgver=0.17.1
 pkgrel=1
 pkgdesc="A galgame/visual-novel manager,Under development......"
 arch=('x86_64' 'aarch64')
-url="https://github.com/wind-mask/${_pkgname}"
+url="https://github.com/huoshen80/${_pkgname}"
 license=('AGPL-3.0-or-later')
 depends=('cairo'  'gdk-pixbuf2' 'glib2' 'gtk3' 'hicolor-icon-theme' 'webkit2gtk-4.1' 'libsoup3' 'libxcb' 'glibc' 'gcc-libs')
 options=('!strip' '!debug')
-# ReinaManager_0.13.0_amd64.deb
-source_x86_64=("${url}/releases/download/v${pkgver//_/-}/${_pkgname}_${_pkgver}_amd64.deb")
-source_aarch64=("${url}/releases/download/v${pkgver//_/-}/${_pkgname}_${_pkgver}_arm64.deb")
-sha256sums_x86_64=('f0ada0fe578b7ce496ceb3fe52ae312528835bfd9c8768dbf89c5abc67963857')
-sha256sums_aarch64=('c3e25751cda67ead31f49f7690aff43b1ee7726fb462e37a7675a4dc44ff129d')
+source_x86_64=("${url}/releases/download/v${pkgver//_/-}/${_pkgname}_${pkgver}_amd64.deb")
+source_aarch64=("${url}/releases/download/v${pkgver//_/-}/${_pkgname}_${pkgver}_arm64.deb")
+sha256sums_x86_64=('472882e0f18ae57d1ade5aca849acdc910a7f3dc098437b555010876aef59ab5')
+sha256sums_aarch64=('adfc13a9171e674ef6abc16f918c4f030a427fe5a6be898023a11d55442849d1')
 package() {
   # Extract package data
   tar -xvf data.tar.gz -C "${pkgdir}"
