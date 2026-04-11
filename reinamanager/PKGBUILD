@@ -1,7 +1,7 @@
 # Maintainer: wind_mask <YOU KONW WHO>
 pkgname=reinamanager
 _pkgname=ReinaManager
-pkgver=0.18.1
+pkgver=0.18.2
 pkgrel=1
 pkgdesc="A galgame/visual-novel manager,Under development......"
 arch=('x86_64' 'aarch64')
@@ -11,8 +11,8 @@ depends=('cairo'  'gdk-pixbuf2' 'glib2' 'gtk3' 'hicolor-icon-theme' 'webkit2gtk-
 options=('!strip' '!debug')
 source_x86_64=("${url}/releases/download/v${pkgver//_/-}/${_pkgname}_${pkgver}_amd64.deb")
 source_aarch64=("${url}/releases/download/v${pkgver//_/-}/${_pkgname}_${pkgver}_arm64.deb")
-sha256sums_x86_64=('9c41af04ca19ba9e9ffe20ab7cb5a73e12b62d9627b2f1979f5d5a5c25095c4a')
-sha256sums_aarch64=('f8c13605cbfdce4e24413ed23d4d3875620b15cce1c8e0ee0964c77f1d592df8')
+sha256sums_x86_64=('7db317daa128300655f9be4dd809fa9220fb5b11060b7b23df1278622ebc4e64')
+sha256sums_aarch64=('1d330ab410bc491e084ca77cdd7d74bde605771a27b05992c6916d98f65f9451')
 package() {
   # Extract package data
   tar -xvf data.tar.gz -C "${pkgdir}"
