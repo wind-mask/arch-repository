@@ -6,6 +6,9 @@ set dotenv-load := true
 default:
     @just --list --unsorted --justfile {{justfile()}}
 
+updpkgsums package=".":
+    ls | where type == dir | where {|d| $d.name =~ {{package}} } |  where { |d| cd $d.name;ls | any { |n| $n.name == PKGBUILD }} | par-each { |p| cd $p.name ; updpkgsums |  complete | insert name $p.name}
+
 build package=".":
     ls | where type == dir | where {|d| $d.name =~ {{package}} } |where { |d| cd $d.name;ls | any { |n| $n.name == PKGBUILD }} | par-each { |p| cd $p.name;makepkg | complete | insert name $p.name}
 
