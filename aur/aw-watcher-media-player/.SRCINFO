@@ -1,0 +1,16 @@
+pkgbase = aw-watcher-media-player
+	pkgdesc = Watcher of system's currently playing media for ActivityWatch
+	pkgver = 1.1.4
+	pkgrel = 1
+	url = https://github.com/2e3s/aw-watcher-media-player
+	arch = x86_64
+	license = Unlicense
+	makedepends = git
+	makedepends = cargo
+	depends = activitywatch
+	depends = dbus
+	depends = openssl
+	source = git+https://github.com/2e3s/aw-watcher-media-player#tag=v1.1.4
+	sha256sums = 1e8a2a6572d7b4c649ec045d21e96a0152b892041b464a855f10fe36755225cb
+
+pkgname = aw-watcher-media-player

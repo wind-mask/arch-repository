@@ -1,8 +1,7 @@
 */src
 */pkg
 */*.log
-*/.*
 */*.pkg.tar.zst
 */*.tar.gz
-*/*/**
 */*.deb
+*/*.pkg

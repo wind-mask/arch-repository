@@ -1,0 +1,13 @@
+pkgbase = otf-monocraft
+	pkgdesc = A programming font based on the typeface used in Minecraft
+	pkgver = 4.2.1
+	pkgrel = 1
+	url = https://github.com/IdreesInc/Monocraft
+	arch = any
+	license = OFL-1.1
+	makedepends = fontforge
+	options = !debug
+	source = Monocraft-4.2.1.tar.gz::https://github.com/IdreesInc/Monocraft/archive/refs/tags/v4.2.1.tar.gz
+	sha256sums = fac3925dd527e1368423c03fa89ba5645727f66d5801a3536cddfa429c2517a9
+
+pkgname = otf-monocraft

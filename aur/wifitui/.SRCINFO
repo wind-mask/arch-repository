@@ -1,0 +1,14 @@
+pkgbase = wifitui
+	pkgdesc = Fast featureful friendly wifi terminal UI
+	pkgver = 0.13.0
+	pkgrel = 1
+	url = https://github.com/shazow/wifitui
+	arch = aarch64
+	arch = x86_64
+	license = MIT
+	makedepends = go
+	depends = glibc
+	source = wifitui-0.13.0::https://github.com/shazow/wifitui/archive/refs/tags/v0.13.0.tar.gz
+	sha256sums = bdcf779c341916e692f3dad26b33121a2acab6e35d68b95e5415cf1e249b5e2e
+
+pkgname = wifitui

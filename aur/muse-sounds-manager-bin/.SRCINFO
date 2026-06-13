@@ -1,0 +1,19 @@
+pkgbase = muse-sounds-manager-bin
+	pkgdesc = Manage MuseScore Libraries
+	pkgver = 2.1.1.912
+	pkgrel = 2
+	url = https://www.musehub.com/
+	install = muse-sounds-manager.install
+	arch = x86_64
+	license = custom:muse-sounds-manager
+	depends = fontconfig
+	depends = zlib
+	depends = hicolor-icon-theme
+	conflicts = muse-hub
+	replaces = muse-hub
+	source = muse-sounds-manager-bin-2.1.1.912.tar.gz::https://muse-cdn.com/Muse_Sounds_Manager_x64.tar.gz
+	source = LICENSE
+	sha256sums = 7e376eac0a8e6a2c3ca94626ee83bcb711c22abac64afbe7980c4b53ce08812c
+	sha256sums = ed3c749e7391b70b11717469815ce8fe65a962cf40dd4df88e21bf240b2058b2
+
+pkgname = muse-sounds-manager-bin

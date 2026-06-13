@@ -1,0 +1,4 @@
+[otf-monocraft]
+source = "git"
+git = "https://github.com/IdreesInc/Monocraft.git"
+prefix = "v"
