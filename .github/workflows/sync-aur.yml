@@ -1,0 +1,182 @@
+name: Sync AUR Packages
+
+on:
+  schedule:
+    # 每天 UTC 02:00 运行（北京时间 10:00）
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: "指定要更新的包名（逗号分隔），留空则更新所有"
+        required: false
+        default: ""
+        type: string
+      dry_run:
+        description: "仅检查变更，不提交"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  sync-aur:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Install git and rsync
+        run: sudo apt-get update && sudo apt-get install -y rsync
+
+      - name: Sync packages from AUR
+        id: sync
+        run: |
+          set -e
+
+          AUR_DIR="aur"
+          CHANGED_PACKAGES=()
+          UPDATED_PACKAGES=()
+          FAILED_PACKAGES=()
+
+          # 获取要更新的包列表
+          if [[ -n "${{ github.event.inputs.packages }}" ]]; then
+            IFS=',' read -ra PKG_LIST <<< "${{ github.event.inputs.packages }}"
+            PKG_LIST=("${PKG_LIST[@]// /}")  # 去除空格
+          else
+            PKG_LIST=($(ls -d ${AUR_DIR}/*/ 2>/dev/null | xargs -I{} basename {}))
+          fi
+
+          echo "📦 将检查 ${#PKG_LIST[@]} 个包的更新"
+
+          for pkg in "${PKG_LIST[@]}"; do
+            pkg_dir="${AUR_DIR}/${pkg}"
+            aur_url="https://aur.archlinux.org/${pkg}.git"
+
+            # 检查目录是否存在
+            if [[ ! -d "$pkg_dir" ]]; then
+              echo "⚠️  目录不存在: ${pkg_dir}，跳过"
+              continue
+            fi
+
+            echo ""
+            echo "━━━ 检查: ${pkg} ━━━"
+
+            # 创建临时目录克隆 AUR 仓库
+            tmp_dir=$(mktemp -d)
+            if ! git clone --depth=1 "$aur_url" "$tmp_dir" 2>/dev/null; then
+              echo "❌ 无法克隆 AUR 仓库: ${aur_url}"
+              FAILED_PACKAGES+=("$pkg")
+              rm -rf "$tmp_dir"
+              continue
+            fi
+
+            # 比较文件差异
+            has_changes=false
+
+            # 比较 PKGBUILD
+            if [[ -f "$tmp_dir/PKGBUILD" ]]; then
+              if ! diff -q "$pkg_dir/PKGBUILD" "$tmp_dir/PKGBUILD" >/dev/null 2>&1; then
+                echo "📝 PKGBUILD 有更新"
+                has_changes=true
+              fi
+            fi
+
+            # 比较 .SRCINFO
+            if [[ -f "$tmp_dir/.SRCINFO" ]]; then
+              if [[ ! -f "$pkg_dir/.SRCINFO" ]] || ! diff -q "$pkg_dir/.SRCINFO" "$tmp_dir/.SRCINFO" >/dev/null 2>&1; then
+                echo "📝 .SRCINFO 有更新"
+                has_changes=true
+              fi
+            fi
+
+            # 比较其他文件（.install, patches 等）
+            for file in "$tmp_dir"/*.install "$tmp_dir"/*.patch "$tmp_dir"/*.sysusers "$tmp_dir"/*.tmpfiles; do
+              if [[ -f "$file" ]]; then
+                basename=$(basename "$file")
+                if [[ ! -f "$pkg_dir/$basename" ]] || ! diff -q "$pkg_dir/$basename" "$file" >/dev/null 2>&1; then
+                  echo "📝 ${basename} 有更新"
+                  has_changes=true
+                fi
+              fi
+            done
+
+            if $has_changes; then
+              CHANGED_PACKAGES+=("$pkg")
+
+              if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+                echo "🔍 [dry-run] 检测到变更，但不提交"
+              else
+                # 同步文件（保留 .git 相关文件和本地 Makefile）
+                echo "📥 同步文件..."
+                rsync -av --delete \
+                  --exclude='.git' \
+                  --exclude='*.pkg.tar.*' \
+                  --exclude='src/' \
+                  --exclude='pkg/' \
+                  "$tmp_dir/" "$pkg_dir/"
+
+                UPDATED_PACKAGES+=("$pkg")
+                echo "✅ 已更新"
+              fi
+            else
+              echo "✔️  无变更"
+            fi
+
+            rm -rf "$tmp_dir"
+          done
+
+          # 输出结果摘要
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 同步结果摘要"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "检查包数: ${#PKG_LIST[@]}"
+          echo "有变更:   ${#CHANGED_PACKAGES[@]}"
+          echo "已更新:   ${#UPDATED_PACKAGES[@]}"
+          echo "失败:     ${#FAILED_PACKAGES[@]}"
+
+          if [[ ${#CHANGED_PACKAGES[@]} -gt 0 ]]; then
+            echo ""
+            echo "变更的包:"
+            for p in "${CHANGED_PACKAGES[@]}"; do
+              echo "  - $p"
+            done
+          fi
+
+          if [[ ${#FAILED_PACKAGES[@]} -gt 0 ]]; then
+            echo ""
+            echo "失败的包:"
+            for p in "${FAILED_PACKAGES[@]}"; do
+              echo "  - $p"
+            done
+          fi
+
+          # 设置输出变量
+          echo "changed=${#CHANGED_PACKAGES[@]}" >> $GITHUB_OUTPUT
+          echo "updated=${#UPDATED_PACKAGES[@]}" >> $GITHUB_OUTPUT
+          echo "failed=${#FAILED_PACKAGES[@]}" >> $GITHUB_OUTPUT
+
+          if [[ ${#CHANGED_PACKAGES[@]} -gt 0 ]]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            # 生成 commit message
+            COMMIT_MSG="⬆️ dep-bump(aur): 更新 ${#UPDATED_PACKAGES[@]} 个 AUR 包"
+            if [[ ${#UPDATED_PACKAGES[@]} -le 5 ]]; then
+              COMMIT_MSG="⬆️ dep-bump(aur): 更新 $(IFS=', '; echo "${UPDATED_PACKAGES[*]}")"
+            fi
+            echo "commit_msg=${COMMIT_MSG}" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.sync.outputs.has_changes == 'true' && github.event.inputs.dry_run != 'true'
+        uses: EndBug/add-and-commit@v10
+        with:
+          add: 'aur/'
+          default_author: github_actions
+          message: ${{ steps.sync.outputs.commit_msg }}

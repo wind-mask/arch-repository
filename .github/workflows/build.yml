@@ -8,12 +8,12 @@ on:
   workflow_dispatch:
     inputs:
       build_packages:
-        description: "Packages to build,split by ','"
-        required: true
+        description: "要构建的包名（逗号分隔），支持 aur/ 下的包（如 aur/activitywatch-bin）"
+        required: false
         default: ""
         type: string
       build_all_packages:
-        description: "build all Packages"
+        description: "构建所有包（包括 aur/ 下的包）"
         required: false
         default: false
         type: boolean
@@ -50,7 +50,12 @@ jobs:
               SELECTED_PKG_DIRS=()
               for pkg in "${INPUT_PKGS[@]}"; do
                 pkg=$(echo "$pkg" | xargs) # 去除空格
-                if [[ -d "./$pkg" && -f "./$pkg/PKGBUILD" ]]; then
+                # 支持两种格式：完整路径（aur/xxx）或仅包名（自动搜索）
+                if [[ -d "$pkg" && -f "$pkg/PKGBUILD" ]]; then
+                  SELECTED_PKG_DIRS+=("$pkg")
+                elif [[ -d "./aur/$pkg" && -f "./aur/$pkg/PKGBUILD" ]]; then
+                  SELECTED_PKG_DIRS+=("./aur/$pkg")
+                elif [[ -d "./$pkg" && -f "./$pkg/PKGBUILD" ]]; then
                   SELECTED_PKG_DIRS+=("./$pkg")
                 fi
               done

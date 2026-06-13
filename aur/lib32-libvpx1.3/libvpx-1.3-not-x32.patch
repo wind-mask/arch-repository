@@ -10,3 +10,4 @@ diff '--color=auto' -rupN libvpx-1.3.0.orig/build/make/configure.sh libvpx-1.3.0
  #error "not x32"
  #endif
  EOF
+
