@@ -34,7 +34,7 @@ jobs:
       matrix: ${{ steps.set_matrix.outputs.matrix }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # 获取完整历史以便比较变更
           persist-credentials: false
@@ -43,37 +43,86 @@ jobs:
         id: set_matrix
         run: |
           # 查找所有包含 PKGBUILD 的目录
-          ALL_PKG_DIRS=$(find . -name PKGBUILD -exec dirname {} \;)
+          mapfile -t ALL_PKG_DIRS < <(find . -path './.git' -prune -o -name PKGBUILD -exec dirname {} \; | sort)
+          SELECTED_PKG_DIRS=()
+          declare -A SELECTED_PKG_DIRS_SEEN=()
+
+          add_package_dir() {
+            local pkg_dir="$1"
+            [[ -z "$pkg_dir" ]] && return
+
+            pkg_dir="${pkg_dir%/}"
+            if [[ "$pkg_dir" != ./* && "$pkg_dir" != /* ]]; then
+              pkg_dir="./$pkg_dir"
+            fi
+
+            if [[ -z "${SELECTED_PKG_DIRS_SEEN[$pkg_dir]:-}" ]]; then
+              SELECTED_PKG_DIRS+=("$pkg_dir")
+              SELECTED_PKG_DIRS_SEEN["$pkg_dir"]=1
+            fi
+          }
+
+          select_all_packages() {
+            local pkg_dir
+            for pkg_dir in "${ALL_PKG_DIRS[@]}"; do
+              add_package_dir "$pkg_dir"
+            done
+          }
+
+          select_changed_package_dirs() {
+            local changed_file pkg_dir normalized_pkg_dir
+            while IFS= read -r changed_file; do
+              [[ -z "$changed_file" ]] && continue
+
+              for pkg_dir in "${ALL_PKG_DIRS[@]}"; do
+                normalized_pkg_dir="${pkg_dir#./}"
+                if [[ "$changed_file" == "$normalized_pkg_dir/"* ]]; then
+                  add_package_dir "$pkg_dir"
+                fi
+              done
+            done <<< "${CHANGED_FILES:-}"
+          }
 
           # 手动触发时根据 inputs 决定构建哪些包
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             if [[ "${GITHUB_EVENT_INPUTS_BUILD_ALL_PACKAGES}" == "true" ]]; then
-              SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
+              select_all_packages
             else
               IFS=',' read -ra INPUT_PKGS <<< "${GITHUB_EVENT_INPUTS_BUILD_PACKAGES}"
-              SELECTED_PKG_DIRS=()
               for pkg in "${INPUT_PKGS[@]}"; do
                 pkg=$(echo "$pkg" | xargs)
                 if [[ -d "$pkg" && -f "$pkg/PKGBUILD" ]]; then
-                  SELECTED_PKG_DIRS+=("$pkg")
+                  add_package_dir "$pkg"
                 elif [[ -d "./aur/$pkg" && -f "./aur/$pkg/PKGBUILD" ]]; then
-                  SELECTED_PKG_DIRS+=("./aur/$pkg")
+                  add_package_dir "./aur/$pkg"
                 elif [[ -d "./$pkg" && -f "./$pkg/PKGBUILD" ]]; then
-                  SELECTED_PKG_DIRS+=("./$pkg")
+                  add_package_dir "./$pkg"
                 fi
               done
             fi
 
-          # workflow_run 触发时（由 sync-aur 触发），比较最近的 commit
+          # workflow_run 触发时（由 sync-aur 触发），使用 workflow_run 提供的 SHA
           elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            echo "Triggered by workflow_run, comparing HEAD~1 and HEAD"
-            BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || echo "")
+            # workflow_run 自身的 HEAD 是当前默认分支 HEAD；
+            # workflow_run.head_sha 是触发 sync-aur 时的提交。
+            TRIGGER_SHA="${{ github.event.workflow_run.head_sha }}"
             HEAD_SHA=$(git rev-parse HEAD)
+            echo "Triggered by workflow_run, trigger SHA: ${TRIGGER_SHA}, current HEAD: ${HEAD_SHA}"
 
-            if [[ -n "$BASE_SHA" ]]; then
-              CHANGED_FILES=$(git diff --name-only ${BASE_SHA} ${HEAD_SHA})
+            if [[ "$HEAD_SHA" == "$TRIGGER_SHA" ]]; then
+              echo "No new commit was pushed by the triggering workflow"
+            elif [[ -n "$TRIGGER_SHA" ]] && git cat-file -t "$TRIGGER_SHA" &>/dev/null; then
+              echo "Comparing ${TRIGGER_SHA} and ${HEAD_SHA}"
+              CHANGED_FILES=$(git diff --name-only "$TRIGGER_SHA" "$HEAD_SHA")
             else
-              SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
+              echo "Cannot resolve trigger SHA, falling back to HEAD~1 and HEAD"
+              BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || echo "")
+              if [[ -n "$BASE_SHA" ]]; then
+                CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+              else
+                echo "Cannot determine changes, building all packages"
+                select_all_packages
+              fi
             fi
 
           # push / pull_request 事件
@@ -87,7 +136,7 @@ jobs:
 
               if [[ "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then
                 echo "New branch push, building all packages"
-                SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
+                select_all_packages
               elif ! git cat-file -t "$BASE_SHA" &>/dev/null; then
                 echo "Force push detected (before SHA not found)"
                 PUSH_COMMITS_JSON='${{ toJson(github.event.commits) }}'
@@ -102,40 +151,37 @@ jobs:
 
                 if [[ -z "${BASE_SHA:-}" ]] || ! git cat-file -t "$BASE_SHA" &>/dev/null; then
                   if [[ "$PUSH_COMMITS_JSON" != "null" && "$PUSH_COMMITS_JSON" != "[]" ]]; then
-                    CHANGED_FILES=$(echo "$PUSH_COMMITS_JSON" | jq -r '.[].added[], .[].modified[]' 2>/dev/null | sort -u)
+                    CHANGED_FILES=$(echo "$PUSH_COMMITS_JSON" | jq -r '.[].added[], .[].modified[], .[].removed[]' 2>/dev/null | sort -u)
                   fi
                   if [[ -z "${CHANGED_FILES:-}" ]]; then
                     echo "Cannot determine changes, building all packages"
-                    SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
+                    select_all_packages
                   fi
                 fi
               fi
             fi
 
             # 通过 diff 获取变更
-            if [[ ${#SELECTED_PKG_DIRS[@]} -eq 0 ]]; then
-              if [[ -z "${CHANGED_FILES:-}" && -n "${BASE_SHA:-}" ]]; then
-                echo "Comparing changes between ${BASE_SHA} and ${HEAD_SHA}"
-                CHANGED_FILES=$(git diff --name-only ${BASE_SHA} ${HEAD_SHA})
-              fi
-
-              for pkg_dir in ${ALL_PKG_DIRS}; do
-                if echo "$CHANGED_FILES" | grep -q "^${pkg_dir#./}"; then
-                  SELECTED_PKG_DIRS+=("$pkg_dir")
-                fi
-              done
+            if [[ ${#SELECTED_PKG_DIRS[@]} -eq 0 && -z "${CHANGED_FILES:-}" && -n "${BASE_SHA:-}" ]]; then
+              echo "Comparing changes between ${BASE_SHA} and ${HEAD_SHA}"
+              CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
             fi
+          fi
+
+          # 将变更文件统一映射到包目录，适用于 workflow_run / push / pull_request。
+          if [[ ${#SELECTED_PKG_DIRS[@]} -eq 0 && -n "${CHANGED_FILES:-}" ]]; then
+            select_changed_package_dirs
           fi
 
           # 如果没有选中的包，则输出空数组
           if [ ${#SELECTED_PKG_DIRS[@]} -eq 0 ]; then
             echo "No package directories selected"
-            echo "matrix=[]" >> $GITHUB_OUTPUT
+            echo "matrix=[]" >> "$GITHUB_OUTPUT"
           else
             # 将选中的包目录转换为 JSON 数组
-            MATRIX_JSON=$(printf '%s\n' "${SELECTED_PKG_DIRS[@]}" | jq -R . | jq -s .)
+            MATRIX_JSON=$(printf '%s\n' "${SELECTED_PKG_DIRS[@]}" | jq -R . | jq -s -c .)
             echo "Selected package directories: ${MATRIX_JSON}"
-            echo matrix=${MATRIX_JSON} >> $GITHUB_OUTPUT
+            echo "matrix=${MATRIX_JSON}" >> "$GITHUB_OUTPUT"
           fi
         env:
           GITHUB_EVENT_INPUTS_BUILD_ALL_PACKAGES: ${{ github.event.inputs.build_all_packages }}
@@ -148,6 +194,8 @@ jobs:
   build_package:
     needs: find_packages
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     # 只有当矩阵不为空时才运行
     if: ${{ fromJson(needs.find_packages.outputs.matrix)[0] != null }}
     strategy:
@@ -173,6 +221,6 @@ jobs:
       - name: Commit checksum and srcinfo changes
         uses: EndBug/add-and-commit@v10
         with:
-          add: '${{ matrix.package_dir }}/PKGBUILD ${{ matrix.package_dir }}/.SRCINFO'
+          add: "${{ matrix.package_dir }}/PKGBUILD ${{ matrix.package_dir }}/.SRCINFO"
           default_author: github_actions
-          message: '📦 build(${{ matrix.package_dir }}): 更新校验和和 .SRCINFO'
+          message: "📦 build(${{ matrix.package_dir }}): 更新校验和和 .SRCINFO"

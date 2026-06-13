@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
@@ -42,6 +42,18 @@ jobs:
           CHANGED_PACKAGES=()
           UPDATED_PACKAGES=()
           FAILED_PACKAGES=()
+          RSYNC_ARGS=(
+            -rlp
+            --checksum
+            --delete
+            # mktemp 创建的 AUR 克隆根目录通常是 700；Git 不跟踪目录权限，
+            # 统一按 checkout 后的常见目录权限比较，避免所有包都误报 .d...p..... ./。
+            --chmod=D755
+            --exclude='.git'
+            --exclude='*.pkg.tar.*'
+            --exclude='src/'
+            --exclude='pkg/'
+          )
 
           # 获取要更新的包列表
           if [[ -n "${{ github.event.inputs.packages }}" ]]; then
@@ -65,6 +77,7 @@ jobs:
 
             echo ""
             echo "━━━ 检查: ${pkg} ━━━"
+            has_changes=false  # 重置变更标志
 
             # 创建临时目录克隆 AUR 仓库
             tmp_dir=$(mktemp -d)
@@ -75,25 +88,15 @@ jobs:
               continue
             fi
 
-            # 使用 rsync dry-run 检测所有文件差异（包括 PKGBUILD source 中的本地文件）
+            # 使用 rsync dry-run 检测 Git 可见的文件差异。
+            # 不比较时间戳，避免同内容文件仅因 mtime 不同而误报。
             echo "🔍 检查文件差异..."
-            RSYNC_OUTPUT=$(rsync -avn --delete --itemize-changes \
-              --exclude='.git' \
-              --exclude='*.pkg.tar.*' \
-              --exclude='src/' \
-              --exclude='pkg/' \
+            CHANGED_FILES=$(rsync -n "${RSYNC_ARGS[@]}" \
+              --out-format='%i %n%L' \
               "$tmp_dir/" "$pkg_dir/" 2>&1)
-
-            # 过滤出实际变更的文件（排除目录列表和汇总信息）
-            # rsync --itemize-changes 输出格式：
-            #   *deleting  文件名  （删除）
-            #   >f+++++++++  文件名  （新增）
-            #   >f.st......  文件名  （修改）
-            #   <f+++++++++  文件名  （反向新增）
-            CHANGED_FILES=$(echo "$RSYNC_OUTPUT" | grep -E '^\*deleting|^>|^<f' | head -20)
             if [[ -n "$CHANGED_FILES" ]]; then
               echo "📝 检测到文件变更:"
-              echo "$CHANGED_FILES"
+              echo "$CHANGED_FILES" | head -20
               has_changes=true
             fi
 
@@ -105,11 +108,8 @@ jobs:
               else
                 # 同步所有文件（排除 .git 和构建产物）
                 echo "📥 同步文件..."
-                rsync -av --delete \
-                  --exclude='.git' \
-                  --exclude='*.pkg.tar.*' \
-                  --exclude='src/' \
-                  --exclude='pkg/' \
+                rsync "${RSYNC_ARGS[@]}" \
+                  --out-format='%i %n%L' \
                   "$tmp_dir/" "$pkg_dir/"
 
                 UPDATED_PACKAGES+=("$pkg")
@@ -165,10 +165,17 @@ jobs:
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Stage AUR changes
+        if: steps.sync.outputs.has_changes == 'true' && github.event.inputs.dry_run != 'true'
+        run: |
+          # AUR 仓库可能跟踪了被包内 .gitignore 忽略的文件，例如 .gitignore 或 .nvchecker.toml。
+          # 强制暂存 aur/ 下的同步结果，避免 rsync 已同步但 Git 普通 add 不提交。
+          git add -A -f aur/
+
       - name: Commit and push changes
         if: steps.sync.outputs.has_changes == 'true' && github.event.inputs.dry_run != 'true'
         uses: EndBug/add-and-commit@v10
         with:
-          add: 'aur/'
+          add: "aur/"
           default_author: github_actions
           message: ${{ steps.sync.outputs.commit_msg }}
