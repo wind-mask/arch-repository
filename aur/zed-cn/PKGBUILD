@@ -44,7 +44,7 @@ package() {
   # 安装桌面文件
   # 查找任意 .desktop 文件
   desktop_file=$(find "$srcdir/zed-dev.app/share/applications" -maxdepth 1 -name "*.desktop" 2>/dev/null | head -n1)
-  install -Dm644 "$desktop_file" "$pkgdir/usr/share/applications/zed-cn.desktop"
+  install -Dm644 "$desktop_file" "$pkgdir/usr/share/applications/zed-cn.desktop" 
   # 移除调试符号（避免生成debug包）
   find "$pkgdir" -name "*.debug" -delete
   strip --strip-all "$pkgdir/opt/$pkgname/bin/zed" 2>/dev/null || true

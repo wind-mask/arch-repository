@@ -16,4 +16,4 @@ pkgname = gtkmm
 
 pkgname = gtkmm-docs
 	pkgdesc = C++ bindings for GTK+ 2 (documentation)
-	depends =
+	depends = 

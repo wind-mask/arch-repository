@@ -64,8 +64,8 @@ package() {
 
 	# Import smaller versions of assets compiled previously
 	cp ${srcdir}/resized-assets/* "${pkgdir}/${PLYMOUTH_THEME_BASEDIR}"
-
-	# Install mkinitcpio file that will add the required theme files to initram
+	
+	# Install mkinitcpio file that will add the required theme files to initram	
 	install -d -m 0755 "${pkgdir}/etc/mkinitcpio.conf.d"
 	install -m 0644 mkinitcpio/minecraft-plymouth.conf "${pkgdir}/etc/mkinitcpio.conf.d"
 

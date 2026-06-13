@@ -3,8 +3,9 @@
 @@ -162,7 +162,7 @@
              return trivial;
          }
-
+         
 -        void enableTrivial () const {
 +        void enableTrivial () {
              this->trivial = true;
          }
+         

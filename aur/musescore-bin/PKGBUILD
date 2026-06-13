@@ -63,3 +63,4 @@ package() {
     install -dm755 "${pkgdir}/usr/bin/"
     install -D -m 0755 "${srcdir}/mscore.sh" "${pkgdir}/usr/bin/mscore"
 }
+

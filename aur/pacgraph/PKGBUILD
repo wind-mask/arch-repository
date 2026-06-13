@@ -26,3 +26,4 @@ package() {
   install -Dm0755 $srcdir/pacgraph-tk-$pkgver-$pkgrel "$pkgdir/usr/bin/pacgraph-tk"
   install -Dm644  $srcdir/$pkgname.1-$pkgver-$pkgrel  "$pkgdir/usr/share/man/man1/$pkgname.1"
 }
+

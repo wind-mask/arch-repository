@@ -52,4 +52,4 @@ pkgname = libsoup
 
 pkgname = libsoup-docs
 	pkgdesc = HTTP client/server library for GNOME (documentation)
-	depends =
+	depends = 

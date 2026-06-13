@@ -7,21 +7,21 @@
 -        self.user_tessdata_dir = os.path.expanduser(f"~/.var/app/{app_id}/data/tessdata")
 +        self.user_tessdata_dir = os.path.expanduser(f"~/.local/var/app/{app_id}/data/tessdata")
          self.window = window
-
+ 
          pytesseract.pytesseract.tesseract_cmd = self.tesseract_cmd
 --- a/meson.build	2025-11-18 18:25:10.000000000 +0100
 +++ b/meson.build	2025-12-28 10:02:57.020635194 +0100
 @@ -62,8 +62,8 @@ else
  endif
-
+ 
  # OCR Directories
 -OCR_TESSERACT_CMD = '/app/bin/tesseract'
 -OCR_ORIGINAL_TESSDATA_DIR = '/app/share/tessdata'
 +ocr_tesseract_cmd = get_option('ocr_tesseract_cmd')
 +ocr_original_tessdata_dir = get_option('ocr_original_tessdata_dir')
-
+ 
  enable_ocr = get_option('enable-ocr')
-
+ 
 @@ -81,8 +81,8 @@ conf.set('SCHEMAS_DIR', PKGDATA_DIR)
  conf.set('SOURCE_DIR', meson.current_source_dir())
  conf.set('BUILD_DIR', meson.current_build_dir())
@@ -30,7 +30,7 @@
 -conf.set('OCR_ORIGINAL_TESSDATA_DIR', OCR_ORIGINAL_TESSDATA_DIR)
 +conf.set('OCR_TESSERACT_CMD', ocr_tesseract_cmd)
 +conf.set('OCR_ORIGINAL_TESSDATA_DIR', ocr_original_tessdata_dir)
-
+ 
  # Install project information
  conf.set('RELEASE_VER', meson.project_version())
 --- a/meson.options	2025-11-18 18:25:10.000000000 +0100

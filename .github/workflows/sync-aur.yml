@@ -75,35 +75,27 @@ jobs:
               continue
             fi
 
-            # 比较文件差异
-            has_changes=false
+            # 使用 rsync dry-run 检测所有文件差异（包括 PKGBUILD source 中的本地文件）
+            echo "🔍 检查文件差异..."
+            RSYNC_OUTPUT=$(rsync -avn --delete --itemize-changes \
+              --exclude='.git' \
+              --exclude='*.pkg.tar.*' \
+              --exclude='src/' \
+              --exclude='pkg/' \
+              "$tmp_dir/" "$pkg_dir/" 2>&1)
 
-            # 比较 PKGBUILD
-            if [[ -f "$tmp_dir/PKGBUILD" ]]; then
-              if ! diff -q "$pkg_dir/PKGBUILD" "$tmp_dir/PKGBUILD" >/dev/null 2>&1; then
-                echo "📝 PKGBUILD 有更新"
-                has_changes=true
-              fi
+            # 过滤出实际变更的文件（排除目录列表和汇总信息）
+            # rsync --itemize-changes 输出格式：
+            #   *deleting  文件名  （删除）
+            #   >f+++++++++  文件名  （新增）
+            #   >f.st......  文件名  （修改）
+            #   <f+++++++++  文件名  （反向新增）
+            CHANGED_FILES=$(echo "$RSYNC_OUTPUT" | grep -E '^\*deleting|^>|^<f' | head -20)
+            if [[ -n "$CHANGED_FILES" ]]; then
+              echo "📝 检测到文件变更:"
+              echo "$CHANGED_FILES"
+              has_changes=true
             fi
-
-            # 比较 .SRCINFO
-            if [[ -f "$tmp_dir/.SRCINFO" ]]; then
-              if [[ ! -f "$pkg_dir/.SRCINFO" ]] || ! diff -q "$pkg_dir/.SRCINFO" "$tmp_dir/.SRCINFO" >/dev/null 2>&1; then
-                echo "📝 .SRCINFO 有更新"
-                has_changes=true
-              fi
-            fi
-
-            # 比较其他文件（.install, patches 等）
-            for file in "$tmp_dir"/*.install "$tmp_dir"/*.patch "$tmp_dir"/*.sysusers "$tmp_dir"/*.tmpfiles; do
-              if [[ -f "$file" ]]; then
-                basename=$(basename "$file")
-                if [[ ! -f "$pkg_dir/$basename" ]] || ! diff -q "$pkg_dir/$basename" "$file" >/dev/null 2>&1; then
-                  echo "📝 ${basename} 有更新"
-                  has_changes=true
-                fi
-              fi
-            done
 
             if $has_changes; then
               CHANGED_PACKAGES+=("$pkg")
@@ -111,7 +103,7 @@ jobs:
               if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
                 echo "🔍 [dry-run] 检测到变更，但不提交"
               else
-                # 同步文件（保留 .git 相关文件和本地 Makefile）
+                # 同步所有文件（排除 .git 和构建产物）
                 echo "📥 同步文件..."
                 rsync -av --delete \
                   --exclude='.git' \

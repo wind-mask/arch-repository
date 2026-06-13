@@ -3,8 +3,9 @@
 @@ -435,7 +435,7 @@
  #endif
        setWizardStyle(wizardStyleValue);
-
+       
 -      setPixmap(QWizard::LogoPixmap, QPixmap(":/data/mscore.png"));
 +      setPixmap(QWizard::LogoPixmap, QPixmap(":/data/mscore3.png"));
        setPixmap(QWizard::WatermarkPixmap, QPixmap());
        setWindowTitle(tr("New Score Wizard"));
+ 

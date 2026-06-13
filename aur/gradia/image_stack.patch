@@ -8,5 +8,5 @@ diff -uprN src/gradia-1.12.1/data/ui/image_stack.blp src.orig/gradia-1.12.1/data
 -                      action-target: true;
 +                      action-target: "true";
                        visible: false;
-
+ 
                        styles [

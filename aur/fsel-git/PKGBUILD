@@ -35,10 +35,10 @@ check() {
 
 package() {
     cd "$pkgname"
-
+    
     # Install binary
     install -Dm755 "target/release/fsel" "$pkgdir/usr/bin/fsel"
-
+    
     # Install license
     install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

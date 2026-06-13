@@ -115,4 +115,4 @@ pkgname = webkit2gtk
 
 pkgname = webkit2gtk-docs
 	pkgdesc = Web content engine for GTK (documentation)
-	depends =
+	depends = 

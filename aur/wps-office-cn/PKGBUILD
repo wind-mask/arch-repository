@@ -128,7 +128,7 @@ package_wps-office-mime-cn() {
 
     install -d "${pkgdir}/usr/share/mime"
     cp -r mime/* "${pkgdir}/usr/share/mime"
-
+    
     cd "${srcdir}/opt/kingsoft/wps-office/"
     install -Dm644 -t "${pkgdir}/usr/share/licenses/${pkgname}" office6/mui/default/*.html
 

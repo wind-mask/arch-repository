@@ -4,3 +4,4 @@ post_install() {
     echo '--> For any customization, take a look at settings file placed in /etc/clight/clight.conf.'
     echo '--> If you are not in a XDG compliant DE, remember to add clight to your autostart script.'
 }
+

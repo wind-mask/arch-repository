@@ -16,5 +16,5 @@ pkgbase = carapace-bin
 	arch = x86_64
 	source_x86_64 = https://github.com/carapace-sh/carapace-bin/releases/download/v1.7.0/carapace-bin_1.7.0_linux_amd64.tar.gz
 	sha256sums_x86_64 = 8c05005a2c60289488b0fa07b8f3e34878792220bf73fbae2c94c8df0774d2ab
-
+	
 pkgname = carapace-bin

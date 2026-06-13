@@ -109,13 +109,13 @@ index bcced004..63961f17 100644
  #include <stdarg.h>
 +#include <stdio.h>
 +#include <stdlib.h>
-
+ 
  static stdOutHandler _printfStdOutHandlerPtr = 0;
  static void* _printfStdOutHandlerUserPtr = 0;
 @@ -23,7 +25,7 @@ int redirected_printf(const char * format, ...) {
      return result;
  }
-
+ 
 -void __android_log_print(int severity, const char* tag, const char* msg) {
 +void __android_log_print(int severity, const char* tag, const char* msg, ...) {
      char *s;
@@ -126,7 +126,7 @@ index 8e52d7f0..012b4b48 100644
 --- a/libjamesdsp/PrintfStdOutExtension.h
 +++ b/libjamesdsp/PrintfStdOutExtension.h
 @@ -6,5 +6,10 @@ typedef void (*stdOutHandler)(const char*, void*);
-
+ 
  extern void setPrintfStdOutHandler(stdOutHandler funcPtr, void* userData);
  extern int isPrintfStdOutHandlerSet();
 +extern void __android_log_print(int severity, const char* tag, const char* msg, ...)
@@ -134,7 +134,7 @@ index 8e52d7f0..012b4b48 100644
 +    __attribute__ ((format(printf, 3, 4)))
 +#endif
 +    ;
-
+ 
  #endif // EELSTDOUTEXTENSION_H
 diff --git a/libjamesdsp/subtree/Main/libjamesdsp/jni/jamesdsp/jdsp/Effects/eel2/nseel-compiler.c b/libjamesdsp/subtree/Main/libjamesdsp/jni/jamesdsp/jdsp/Effects/eel2/nseel-compiler.c
 index 33b8f422..3cb309b2 100644
@@ -197,7 +197,7 @@ index 33b8f422..3cb309b2 100644
 -	register i, j, l, m;
 +	register int i, j, l, m;
  	register float x;
-
+ 
  	l = 0; m = n - 1;
 @@ -3855,7 +3855,7 @@ static float NSEEL_CGEN_CALL _eel_flacDecodeFile(void *opaque, INT_PTR num_param
  	float *blocks = c->ram_state;
@@ -251,7 +251,7 @@ index b8402403..990ffda7 100644
  #include "jdsp_header.h"
  #define TAG "EffectDSPMain"
 +#include "PrintfStdOutExtension.h"
-
+ 
  #ifdef __ANDROID_API__
  #if __ANDROID_API__ < __ANDROID_API_J_MR2__
 @@ -1259,4 +1262,4 @@ void JamesDSPFree(JamesDSPLib *jdsp)

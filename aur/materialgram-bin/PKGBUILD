@@ -60,3 +60,4 @@ package() {
 		install -m644 "${srcdir}/usr/share/icons/hicolor/${icon_size}x${icon_size}/apps/io.github.kukuruzka165.materialgram.png" "${icon_dir}/io.github.kukuruzka165.materialgram.png"
 	done
 }
+

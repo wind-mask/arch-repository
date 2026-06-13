@@ -5,6 +5,10 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  workflow_run:
+    workflows: ["Sync AUR Packages"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       build_packages:
@@ -24,6 +28,8 @@ jobs:
   # ===============================================================
   find_packages:
     runs-on: ubuntu-latest
+    # workflow_run 触发时，只在源 workflow 成功时运行
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
     outputs:
       matrix: ${{ steps.set_matrix.outputs.matrix }}
     steps:
@@ -42,15 +48,12 @@ jobs:
           # 手动触发时根据 inputs 决定构建哪些包
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             if [[ "${GITHUB_EVENT_INPUTS_BUILD_ALL_PACKAGES}" == "true" ]]; then
-              # 构建所有包
               SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
             else
-              # 根据输入的包名列表构建
               IFS=',' read -ra INPUT_PKGS <<< "${GITHUB_EVENT_INPUTS_BUILD_PACKAGES}"
               SELECTED_PKG_DIRS=()
               for pkg in "${INPUT_PKGS[@]}"; do
-                pkg=$(echo "$pkg" | xargs) # 去除空格
-                # 支持两种格式：完整路径（aur/xxx）或仅包名（自动搜索）
+                pkg=$(echo "$pkg" | xargs)
                 if [[ -d "$pkg" && -f "$pkg/PKGBUILD" ]]; then
                   SELECTED_PKG_DIRS+=("$pkg")
                 elif [[ -d "./aur/$pkg" && -f "./aur/$pkg/PKGBUILD" ]]; then
@@ -60,53 +63,47 @@ jobs:
                 fi
               done
             fi
+
+          # workflow_run 触发时（由 sync-aur 触发），比较最近的 commit
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "Triggered by workflow_run, comparing HEAD~1 and HEAD"
+            BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || echo "")
+            HEAD_SHA=$(git rev-parse HEAD)
+
+            if [[ -n "$BASE_SHA" ]]; then
+              CHANGED_FILES=$(git diff --name-only ${BASE_SHA} ${HEAD_SHA})
+            else
+              SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
+            fi
+
+          # push / pull_request 事件
           else
-            # 对于 pull_request 事件，比较目标分支和当前分支
             if [[ "${{ github.event_name }}" == "pull_request" ]]; then
               BASE_SHA=${{ github.event.pull_request.base.sha }}
               HEAD_SHA=${{ github.event.pull_request.head.sha }}
             else
-              # 对于 push 事件，使用 push 前后的分支位置进行比较
-              # 这样可以正确处理一次 push 多个 commit 的情况
               BASE_SHA=${{ github.event.before }}
               HEAD_SHA=${{ github.event.after }}
 
-              # 处理特殊情况：
-              # 1. 新分支首次 push（before 为全零）
-              # 2. force push 导致原 commit 不存在
               if [[ "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then
                 echo "New branch push, building all packages"
                 SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
               elif ! git cat-file -t "$BASE_SHA" &>/dev/null; then
                 echo "Force push detected (before SHA not found)"
-
-                # 尝试找到未被重写的 commit 作为 base
-                # 通过 jq 获取 commits 数组长度
                 PUSH_COMMITS_JSON='${{ toJson(github.event.commits) }}'
                 PUSH_COMMITS_COUNT=$(echo "$PUSH_COMMITS_JSON" | jq '. | length')
-                echo "This push contains ${PUSH_COMMITS_COUNT} commits"
 
-                # HEAD~N 应该是第一个未被重写的 commit
                 if [[ "$PUSH_COMMITS_COUNT" -gt 0 ]]; then
                   POTENTIAL_BASE=$(git rev-parse "HEAD~${PUSH_COMMITS_COUNT}" 2>/dev/null)
-
                   if [[ -n "$POTENTIAL_BASE" ]] && git cat-file -t "$POTENTIAL_BASE" &>/dev/null; then
-                    echo "Found potential base commit: ${POTENTIAL_BASE}"
                     BASE_SHA=$POTENTIAL_BASE
                   fi
                 fi
 
-                # 如果无法通过回溯找到 base，尝试从 push event 获取变更文件
                 if [[ -z "${BASE_SHA:-}" ]] || ! git cat-file -t "$BASE_SHA" &>/dev/null; then
-                  echo "Could not find base commit, trying push event commits"
                   if [[ "$PUSH_COMMITS_JSON" != "null" && "$PUSH_COMMITS_JSON" != "[]" ]]; then
                     CHANGED_FILES=$(echo "$PUSH_COMMITS_JSON" | jq -r '.[].added[], .[].modified[]' 2>/dev/null | sort -u)
-                    if [[ -n "$CHANGED_FILES" ]]; then
-                      echo "Using file changes from push event"
-                    fi
                   fi
-
-                  # 如果仍然无法获取变更，构建所有包
                   if [[ -z "${CHANGED_FILES:-}" ]]; then
                     echo "Cannot determine changes, building all packages"
                     SELECTED_PKG_DIRS=(${ALL_PKG_DIRS})
@@ -115,17 +112,14 @@ jobs:
               fi
             fi
 
-            # 如果还没有确定 SELECTED_PKG_DIRS，则通过 diff 获取变更
+            # 通过 diff 获取变更
             if [[ ${#SELECTED_PKG_DIRS[@]} -eq 0 ]]; then
-              # 如果 CHANGED_FILES 还没设置，通过 git diff 获取
               if [[ -z "${CHANGED_FILES:-}" && -n "${BASE_SHA:-}" ]]; then
                 echo "Comparing changes between ${BASE_SHA} and ${HEAD_SHA}"
                 CHANGED_FILES=$(git diff --name-only ${BASE_SHA} ${HEAD_SHA})
               fi
 
-              # 筛选出有变更的包目录
               for pkg_dir in ${ALL_PKG_DIRS}; do
-                # 检查该包目录下是否有任何文件被修改
                 if echo "$CHANGED_FILES" | grep -q "^${pkg_dir#./}"; then
                   SELECTED_PKG_DIRS+=("$pkg_dir")
                 fi
@@ -148,6 +142,7 @@ jobs:
           GITHUB_EVENT_INPUTS_BUILD_PACKAGES: ${{ github.event.inputs.build_packages }}
 
   # ===============================================================
+  # ===============================================================
   # Job 2: 根据找到的目录列表，为每个更新的包进行构建
   # ===============================================================
   build_package:
@@ -164,7 +159,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Build package in ${{ matrix.package_dir }}
         uses: wind-mask/archlinux-package-action@main
@@ -173,3 +169,10 @@ jobs:
           updpkgsums: true
           aur: true
           srcinfo: true
+
+      - name: Commit checksum and srcinfo changes
+        uses: EndBug/add-and-commit@v10
+        with:
+          add: '${{ matrix.package_dir }}/PKGBUILD ${{ matrix.package_dir }}/.SRCINFO'
+          default_author: github_actions
+          message: '📦 build(${{ matrix.package_dir }}): 更新校验和和 .SRCINFO'
