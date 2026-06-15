@@ -179,7 +179,8 @@ jobs:
             echo "matrix=[]" >> "$GITHUB_OUTPUT"
           else
             # 将选中的包目录转换为 JSON 数组
-            MATRIX_JSON=$(printf '%s\n' "${SELECTED_PKG_DIRS[@]}" | jq -R . | jq -s -c .)
+            # 去除路径中的 ./ 前缀，避免 upload-artifact 报错
+            MATRIX_JSON=$(printf '%s\n' "${SELECTED_PKG_DIRS[@]}" | sed 's|^\./||' | jq -R . | jq -s -c .)
             echo "Selected package directories: ${MATRIX_JSON}"
             echo "matrix=${MATRIX_JSON}" >> "$GITHUB_OUTPUT"
           fi
@@ -224,3 +225,9 @@ jobs:
           add: "${{ matrix.package_dir }}/PKGBUILD ${{ matrix.package_dir }}/.SRCINFO"
           default_author: github_actions
           message: "📦 build(${{ matrix.package_dir }}): 更新校验和和 .SRCINFO"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package_dir }}
+          path: ${{ github.workspace }}/${{ matrix.package_dir }}/*.pkg.tar.zst
