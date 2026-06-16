@@ -226,8 +226,15 @@ jobs:
           default_author: github_actions
           message: "📦 build(${{ matrix.package_dir }}): 更新校验和和 .SRCINFO"
 
+      - name: Generate safe artifact name
+        id: artifact_name
+        run: |
+          # 将路径中的斜杠替换为连字符，生成安全的 artifact 名称
+          SAFE_NAME="${{ matrix.package_dir }}"
+          SAFE_NAME="${SAFE_NAME//\//-}"
+          echo "name=${SAFE_NAME}" >> "$GITHUB_OUTPUT"
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.package_dir }}
+          name: pkg-${{ steps.artifact_name.outputs.name }}
           path: ${{ github.workspace }}/${{ matrix.package_dir }}/*.pkg.tar.zst
