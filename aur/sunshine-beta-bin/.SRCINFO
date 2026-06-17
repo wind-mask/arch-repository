@@ -38,7 +38,7 @@ pkgbase = sunshine-beta-bin
 	source = sunshine-beta-bin-2026.616.153054.desktop::https://github.com/LizardByte/Sunshine/blob/master/packaging/linux/dev.lizardbyte.app.Sunshine.desktop
 	source = sunshine-capabilities.hook
 	sha256sums = 25dddeb76367ee1fafb7ea7967ff8143605544e03f582f47581c820134a0309d
-	sha256sums = SKIP
-	sha256sums = SKIP
+	sha256sums = ac11d157392e87b493f6c11ac54e61118f7d56e3868fca794888d89d4404ac7a
+	sha256sums = f0ec806b7922e48bb7127046cf4b72f907220fb5ad136b72cdb1af3239c3a963
 
 pkgname = sunshine-beta-bin
