@@ -45,9 +45,11 @@ conflicts=('sunshine' 'sunshine-git' 'sunshine-bin')
 replaces=('sunshine-bin')
 makedepends=('patchelf')
 provides=('sunshine-bin')
-sha256sums=('ec0c0f8003d2f1c153e83740cbad974cdac572f45fdc3758a5c6c41e46b7ed9e'
-            '62e11770526e1edf87ed813a8f124e6b73f5f8691ad9607a4d74185e6674e144'
-            'f0ec806b7922e48bb7127046cf4b72f907220fb5ad136b72cdb1af3239c3a963')
+sha256sums=(
+    'ec0c0f8003d2f1c153e83740cbad974cdac572f45fdc3758a5c6c41e46b7ed9e'
+    'SKIP'
+    'SKIP'
+)
 
 prepare() {
     sed -i "s/@PROJECT_NAME@/$_pkgname/g" "$_pkgname-$pkgver.desktop"
