@@ -1,0 +1,27 @@
+pkgbase = xmcl-electron-bin
+	pkgdesc = X Minecraft Launcher - An Open Source Minecraft Launcher with Modern UX. Provides a Disk Efficient way to manage all your Mods!
+	pkgver = 0.60.0
+	pkgrel = 1
+	url = https://xmcl.app/
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	makedepends = libicns
+	depends = electron41
+	optdepends = jre11-openjdk: Recommended for Minecraft 1.12(17w13a)-1.17(21w18a)
+	optdepends = jre17-openjdk: Recommended for Minecraft 1.17(21w19a)-1.20
+	optdepends = jre21-openjdk: Required for Minecraft 1.21
+	optdepends = jre25-openjdk: Required for Minecraft 26
+	provides = xmcl
+	source = https://github.com/Voxelum/x-minecraft-launcher/releases/download/v0.60.0/app-0.60.0-linux.asar.gz
+	source = https://github.com/Voxelum/x-minecraft-launcher/raw/refs/heads/master/xmcl-electron-app/icons/dark.icns
+	source = xmcl.desktop
+	sha256sums = 92f676ce475b58b434bb8d2f5d44f3e7802a027a1f3f5bf4312e09e9a0f8eef5
+	sha256sums = cf229073fb478254b751a8198b23be961533101065ca712e323cf60cd15f3383
+	sha256sums = 2bec20067e7ef4c7265be764a06dc8b94d98fef53cf6c1ddca25f2f6814d7010
+	source_x86_64 = xmcl_0.60.0_x86_64.asar.gz::https://github.com/Voxelum/x-minecraft-launcher/releases/download/v0.60.0/app-0.60.0-linux.asar.gz
+	sha256sums_x86_64 = 92f676ce475b58b434bb8d2f5d44f3e7802a027a1f3f5bf4312e09e9a0f8eef5
+	source_aarch64 = xmcl_0.60.0_aarch64.asar.gz::https://github.com/Voxelum/x-minecraft-launcher/releases/download/v0.60.0/app-0.60.0-linux-arm64.asar.gz
+	sha256sums_aarch64 = 92f676ce475b58b434bb8d2f5d44f3e7802a027a1f3f5bf4312e09e9a0f8eef5
+
+pkgname = xmcl-electron-bin
