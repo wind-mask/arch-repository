@@ -1,0 +1,39 @@
+# Maintainer: wind_mask <YOU KNOW WHO>
+
+pkgname=clip-bridge-wind-mask-git
+_pkgname=clip-bridge
+pkgver=v0.1.9.r2.g5a56079
+pkgrel=1
+pkgdesc='Sync your X11 and Wayland clipboard seamlessly'
+url='https://github.com/wind-mask/clip-bridge'
+license=(MIT)
+provides=("${_pkgname}=${pkgver}")
+conflicts=("${_pkgname}")
+makedepends=('cargo')
+depends=('wayland' 'wayland-protocols' 'libx11' 'libxkbcommon' 'libxkbcommon-x11')
+arch=('i686' 'x86_64' 'armv6h' 'armv7h')
+source=("$_pkgname::git+$url")
+b2sums=('SKIP')
+pkgver() {
+	cd "$_pkgname"
+	git describe --long --abbrev=7 --tags | sed 's/^clip-bridge-//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+prepare() {
+    cd "$_pkgname"
+    export RUSTUP_TOOLCHAIN=stable
+    cargo fetch --locked --target host-tuple
+}
+
+build() {
+    cd "$_pkgname"
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_TARGET_DIR=target
+    cargo build --frozen --release --all-features
+}
+
+package() {
+    cd "$_pkgname"
+    install -Dm0755 -t "$pkgdir/usr/bin/" "target/release/$_pkgname"
+    # for custom license, e.g. MIT
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

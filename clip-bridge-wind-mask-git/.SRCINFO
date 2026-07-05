@@ -1,0 +1,22 @@
+pkgbase = clip-bridge-wind-mask-git
+	pkgdesc = Sync your X11 and Wayland clipboard seamlessly
+	pkgver = v0.1.9.r2.g5a56079
+	pkgrel = 1
+	url = https://github.com/wind-mask/clip-bridge
+	arch = i686
+	arch = x86_64
+	arch = armv6h
+	arch = armv7h
+	license = MIT
+	makedepends = cargo
+	depends = wayland
+	depends = wayland-protocols
+	depends = libx11
+	depends = libxkbcommon
+	depends = libxkbcommon-x11
+	provides = clip-bridge=v0.1.9.r2.g5a56079
+	conflicts = clip-bridge
+	source = clip-bridge::git+https://github.com/wind-mask/clip-bridge
+	b2sums = SKIP
+
+pkgname = clip-bridge-wind-mask-git
