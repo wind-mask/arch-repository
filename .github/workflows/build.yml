@@ -215,7 +215,7 @@ jobs:
         uses: wind-mask/archlinux-package-action@main
         with:
           path: ${{ matrix.package_dir }}
-          updpkgsums: true
+          updpkgsums: false
           aur: true
           srcinfo: true
 
