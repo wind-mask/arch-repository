@@ -12,9 +12,9 @@ pkgbase = trashy
 	source = trashy-2.0.0.tar.gz::https://github.com/oberblastmeister/trashy/archive/refs/tags/v2.0.0.tar.gz
 	source = Cargo.lock
 	sha256sums = efdcb0eb913855b5339d2b464a1944f1c506143d65ecf85771dfe5419ef4f387
-	sha256sums = 7a301a20bb6bc1d45110d44f97dd5e8f889fa60546dcd2529bc0979794fe56d6
+	sha256sums = 21620c910f6f1cc20cf0042ab2aa8e79b3a3037a9ab1ba2baf080f19f205adec
 	b2sums = babdf4caeceaff85d481926d0fc872637910e17d9aa7b0a37b26a3e437cc2f950d785a961b399f3eb93c0466134406904b0fca66ac8ba400e29de9e3ef935bf1
-	b2sums = b611051264d4cc0467c35e3a4b4f0aa2f657f1c98af9ddc15e1de4c41dea1c8cb407ae07bafadd546f65e0e5b7ddb9620c578fc7fa288c52e2a0374609f47454
+	b2sums = 45b801766e911bb5b75ea2c7180cd58e59d3ae5ad2a970ac912aa49d482ff941a318ba0f3bbdfc45910a6aa1a4818e7804f91ea867fbd59a7dbd973cea53b05a
 	depends_x86_64 = gcc-libs
 
 pkgname = trashy
