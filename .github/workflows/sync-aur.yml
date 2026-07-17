@@ -36,12 +36,16 @@ jobs:
       - name: Sync packages from AUR
         id: sync
         run: |
-          set -e
+          set -euo pipefail
 
           AUR_DIR="aur"
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
           CHANGED_PACKAGES=()
           UPDATED_PACKAGES=()
           FAILED_PACKAGES=()
+          PATCHED_PACKAGES=()
+          ALREADY_PATCHED_PACKAGES=()
+          PRESERVED_PACKAGES=()
           RSYNC_ARGS=(
             -rlp
             --checksum
@@ -55,71 +59,304 @@ jobs:
             --exclude='pkg/'
           )
 
+          # 从 .SRCINFO/PKGBUILD 提取可比较的完整包版本。
+          # Ubuntu runner 没有 Arch 的 vercmp，因此比较时优先使用 sort -V，
+          # 无法解析时返回 unknown 并退回到 AUR Git 提交时间。
+          version_from_srcinfo() {
+            local text="$1"
+            local ver rel epoch
+            ver=$(printf '%s\n' "$text" | awk -F' = ' '$1 ~ /^[[:space:]]*pkgver[[:space:]]*$/ { print $2; exit }')
+            rel=$(printf '%s\n' "$text" | awk -F' = ' '$1 ~ /^[[:space:]]*pkgrel[[:space:]]*$/ { print $2; exit }')
+            epoch=$(printf '%s\n' "$text" | awk -F' = ' '$1 ~ /^[[:space:]]*epoch[[:space:]]*$/ { print $2; exit }')
+            if [[ -z "$ver" ]]; then
+              printf '%s\n' unknown
+              return
+            fi
+            if [[ -n "$epoch" && "$epoch" != "0" ]]; then
+              ver="${epoch}:${ver}"
+            fi
+            if [[ -n "$rel" ]]; then
+              ver="${ver}-${rel}"
+            fi
+            printf '%s\n' "$ver"
+          }
+
+          version_from_pkgbuild() {
+            local text="$1"
+            local ver rel epoch
+            ver=$(printf '%s\n' "$text" | awk -F= '/^[[:space:]]*pkgver[[:space:]]*=/ { value=$2; gsub(/[[:space:]\042\047]/, "", value); print value; exit }')
+            rel=$(printf '%s\n' "$text" | awk -F= '/^[[:space:]]*pkgrel[[:space:]]*=/ { value=$2; gsub(/[[:space:]\042\047]/, "", value); print value; exit }')
+            epoch=$(printf '%s\n' "$text" | awk -F= '/^[[:space:]]*epoch[[:space:]]*=/ { value=$2; gsub(/[[:space:]\042\047]/, "", value); print value; exit }')
+            if [[ -z "$ver" || "$ver" == *\$\{* ]]; then
+              printf '%s\n' unknown
+              return
+            fi
+            if [[ -n "$epoch" && "$epoch" != "0" ]]; then
+              ver="${epoch}:${ver}"
+            fi
+            if [[ -n "$rel" ]]; then
+              ver="${ver}-${rel}"
+            fi
+            printf '%s\n' "$ver"
+          }
+
+          package_version_from_dir() {
+            local dir="$1"
+            local version
+            if [[ -f "$dir/.SRCINFO" ]]; then
+              version=$(version_from_srcinfo "$(<"$dir/.SRCINFO")")
+              if [[ "$version" != unknown ]]; then
+                printf '%s\n' "$version"
+                return
+              fi
+            fi
+            if [[ -f "$dir/PKGBUILD" ]]; then
+              version_from_pkgbuild "$(<"$dir/PKGBUILD")"
+              return
+            fi
+            printf '%s\n' unknown
+          }
+
+          package_version_from_commit() {
+            local commit="$1"
+            local package_path="$2"
+            local text version
+            if text=$(git show "$commit:$package_path/.SRCINFO" 2>/dev/null); then
+              version=$(version_from_srcinfo "$text")
+              if [[ "$version" != unknown ]]; then
+                printf '%s\n' "$version"
+                return
+              fi
+            fi
+            if text=$(git show "$commit:$package_path/PKGBUILD" 2>/dev/null); then
+              version_from_pkgbuild "$text"
+              return
+            fi
+            printf '%s\n' unknown
+          }
+
+          compare_versions() {
+            local left="$1"
+            local right="$2"
+            local sorted
+            if [[ "$left" == unknown || "$right" == unknown ]]; then
+              printf '%s\n' unknown
+              return
+            fi
+            if [[ "$left" == "$right" ]]; then
+              printf '%s\n' 0
+              return
+            fi
+            sorted=$(printf '%s\n' "$left" "$right" | LC_ALL=C sort -V)
+            if [[ "$sorted" == "${left}"$'\n'"${right}" ]]; then
+              printf '%s\n' -1
+            else
+              printf '%s\n' 1
+            fi
+          }
+
+          # 找到当前包最近一次代表 AUR 快照的提交。fix-aur/build 提交之后的
+          # 所有差异都会被视为本地补丁；若历史提交命名不符合约定，则退回到
+          # 该包最早的仓库提交，避免无基线时静默丢失修改。
+          find_sync_base() {
+            local package_path="$1"
+            local commit subject
+            while IFS=$'\t' read -r commit subject; do
+              case "$subject" in
+                *"dep-bump(aur)"*|*"add-aur"*|*"up-aur"*)
+                  printf '%s\n' "$commit"
+                  return
+                  ;;
+              esac
+            done < <(git log --format='%H%x09%s' -- "$package_path")
+            local oldest_commit
+            oldest_commit=$(git log --format='%H' --reverse -- "$package_path" | awk 'NR == 1 { print }')
+            printf '%s\n' "$oldest_commit"
+          }
+
+          format_time() {
+            local timestamp="$1"
+            date -u -d "@$timestamp" '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || printf '%s' "$timestamp"
+          }
+
+          print_preview() {
+            local text="$1"
+            local line count=0
+            while IFS= read -r line; do
+              printf '%s\n' "$line"
+              count=$((count + 1))
+              if (( count >= 20 )); then
+                break
+              fi
+            done <<< "$text"
+          }
+
+          cleanup_tmp() {
+            if [[ -n "${tmp_dir:-}" ]]; then
+              rm -rf "$tmp_dir"
+            fi
+            if [[ -n "${candidate_dir:-}" ]]; then
+              rm -rf "$candidate_dir"
+            fi
+            if [[ -n "${patch_file:-}" ]]; then
+              rm -f "$patch_file"
+            fi
+          }
+
           # 获取要更新的包列表
           if [[ -n "${{ github.event.inputs.packages }}" ]]; then
             IFS=',' read -ra PKG_LIST <<< "${{ github.event.inputs.packages }}"
-            PKG_LIST=("${PKG_LIST[@]// /}")  # 去除空格
+            for i in "${!PKG_LIST[@]}"; do
+              PKG_LIST[$i]="${PKG_LIST[$i]// /}"
+            done
           else
-            PKG_LIST=($(ls -d ${AUR_DIR}/*/ 2>/dev/null | xargs -I{} basename {}))
+            PKG_LIST=()
+            for pkg_path in "$AUR_DIR"/*/; do
+              [[ -d "$pkg_path" ]] || continue
+              pkg_path="${pkg_path%/}"
+              PKG_LIST+=("${pkg_path##*/}")
+            done
           fi
 
           echo "📦 将检查 ${#PKG_LIST[@]} 个包的更新"
 
+          # 下方循环中的函数均已在上方定义；ShellCheck 对循环内调用会误报 SC2218。
+          # shellcheck disable=SC2218
           for pkg in "${PKG_LIST[@]}"; do
             pkg_dir="${AUR_DIR}/${pkg}"
             aur_url="https://aur.archlinux.org/${pkg}.git"
+            tmp_dir=""
+            candidate_dir=""
+            patch_file=""
 
             # 检查目录是否存在
-            if [[ ! -d "$pkg_dir" ]]; then
-              echo "⚠️  目录不存在: ${pkg_dir}，跳过"
+            if [[ ! -d "$pkg_dir" || ! -f "$pkg_dir/PKGBUILD" ]]; then
+              echo "⚠️  目录或 PKGBUILD 不存在: ${pkg_dir}，跳过"
               continue
             fi
 
             echo ""
             echo "━━━ 检查: ${pkg} ━━━"
-            has_changes=false  # 重置变更标志
 
             # 创建临时目录克隆 AUR 仓库
             tmp_dir=$(mktemp -d)
             if ! git clone --depth=1 "$aur_url" "$tmp_dir" 2>/dev/null; then
               echo "❌ 无法克隆 AUR 仓库: ${aur_url}"
               FAILED_PACKAGES+=("$pkg")
-              rm -rf "$tmp_dir"
+              cleanup_tmp
               continue
             fi
 
-            # 使用 rsync dry-run 检测 Git 可见的文件差异。
-            # 不比较时间戳，避免同内容文件仅因 mtime 不同而误报。
-            echo "🔍 检查文件差异..."
-            CHANGED_FILES=$(rsync -n "${RSYNC_ARGS[@]}" \
-              --out-format='%i %n%L' \
-              "$tmp_dir/" "$pkg_dir/" 2>&1)
-            if [[ -n "$CHANGED_FILES" ]]; then
-              echo "📝 检测到文件变更:"
-              echo "$CHANGED_FILES" | head -20
-              has_changes=true
+            local_commit=$(git log --format='%H' -1 -- "$pkg_dir" 2>/dev/null || true)
+            base_commit=$(find_sync_base "$pkg_dir" || true)
+            if [[ -z "$local_commit" || -z "$base_commit" ]]; then
+              echo "::warning title=无法确定 AUR 补丁基线::${pkg} 没有可用的仓库提交，已跳过同步"
+              FAILED_PACKAGES+=("$pkg")
+              cleanup_tmp
+              continue
             fi
 
-            if $has_changes; then
-              CHANGED_PACKAGES+=("$pkg")
+            local_version=$(package_version_from_dir "$pkg_dir")
+            remote_version=$(package_version_from_dir "$tmp_dir")
+            base_version=$(package_version_from_commit "$base_commit" "$pkg_dir")
+            local_time=$(git show -s --format='%ct' "$local_commit")
+            base_time=$(git show -s --format='%ct' "$base_commit")
+            remote_commit=$(git -C "$tmp_dir" rev-parse HEAD)
+            remote_time=$(git -C "$tmp_dir" show -s --format='%ct' HEAD)
+            remote_vs_base=$(compare_versions "$remote_version" "$base_version")
+            remote_vs_local=$(compare_versions "$remote_version" "$local_version")
 
-              if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
-                echo "🔍 [dry-run] 检测到变更，但不提交"
+            echo "📌 基线: ${base_commit:0:12} ${base_version} ($(format_time "$base_time"))"
+            echo "📌 仓库: ${local_version}，最近修改 $(format_time "$local_time")"
+            echo "📌 AUR:  ${remote_version}，提交 ${remote_commit:0:12} ($(format_time "$remote_time"))"
+            echo "📌 AUR 相对仓库版本: ${remote_vs_local}"
+            if [[ "$remote_vs_base" == 1 || ("$remote_vs_base" == 0 && "$remote_time" -gt "$base_time") ]]; then
+              echo "⬆️  AUR 版本/提交晚于同步基线，将在同步后重放本地修改"
+            elif [[ "$remote_vs_base" == 0 ]]; then
+              echo "ℹ️  AUR 与同步基线版本相同，将验证并保留本地修改"
+            elif [[ "$remote_vs_base" == unknown ]]; then
+              echo "⚠️  无法可靠比较版本，将使用补丁应用结果和提交时间判断"
+            else
+              echo "::warning title=AUR 版本回退::${pkg} 的 AUR 版本 ${remote_version} 早于仓库基线 ${base_version}，已跳过同步"
+              FAILED_PACKAGES+=("$pkg")
+              cleanup_tmp
+              continue
+            fi
+
+            # 从基线快照到当前仓库快照生成补丁。候选目录位于工作区内，
+            # 这样 git apply 可以校验 Git 补丁中的路径和 blob 信息。
+            patch_file=$(mktemp)
+            git diff --binary --no-ext-diff --relative="$pkg_dir" "$base_commit" HEAD -- "$pkg_dir" > "$patch_file"
+            candidate_dir=$(mktemp -d ".aur-sync-${pkg}.XXXXXX")
+            rsync "${RSYNC_ARGS[@]}" "$tmp_dir/" "$candidate_dir/"
+
+            if [[ -s "$patch_file" ]]; then
+              echo "🧩 检测到相对基线的本地修改，尝试应用补丁"
+              patch_errors=""
+              if patch_errors=$(git apply --check --directory="$candidate_dir" "$patch_file" 2>&1); then
+                apply_errors=""
+                if apply_errors=$(git apply --directory="$candidate_dir" "$patch_file" 2>&1); then
+                  PATCHED_PACKAGES+=("$pkg")
+                  echo "✅ 已应用本地补丁"
+                else
+                  echo "::warning title=AUR 本地补丁应用失败::${pkg} 的补丁无法应用，已保留仓库中的原版本"
+                  if [[ -n "$apply_errors" ]]; then
+                    echo "$apply_errors"
+                  fi
+                  FAILED_PACKAGES+=("$pkg")
+                  cleanup_tmp
+                  continue
+                fi
               else
-                # 同步所有文件（排除 .git 和构建产物）
-                echo "📥 同步文件..."
-                rsync "${RSYNC_ARGS[@]}" \
-                  --out-format='%i %n%L' \
-                  "$tmp_dir/" "$pkg_dir/"
+                reverse_errors=""
+                if reverse_errors=$(git apply --reverse --check --directory="$candidate_dir" "$patch_file" 2>&1); then
+                  ALREADY_PATCHED_PACKAGES+=("$pkg")
+                  echo "ℹ️  AUR 已包含仓库中的本地修改，无需重复应用"
+                else
+                  echo "::warning title=AUR 本地补丁冲突::${pkg} 的补丁无法应用，已保留仓库中的原版本"
+                  if [[ -n "$patch_errors" ]]; then
+                    echo "$patch_errors"
+                  fi
+                  if [[ -n "$reverse_errors" ]]; then
+                    echo "$reverse_errors"
+                  fi
+                  FAILED_PACKAGES+=("$pkg")
+                  cleanup_tmp
+                  continue
+                fi
+              fi
+            fi
 
+            # 比较最终候选树而不是裸 AUR 树。若本地补丁已成功重放，
+            # 候选树可能与仓库完全一致，此时不产生无意义的同步提交。
+            candidate_changes=$(rsync -n "${RSYNC_ARGS[@]}" --out-format='%i %n%L' "$candidate_dir/" "$pkg_dir/" 2>&1)
+            if [[ -n "$candidate_changes" ]]; then
+              if [[ "$remote_vs_base" == 0 || "$remote_vs_base" == unknown ]] && (( remote_time < base_time )); then
+                echo "::warning title=AUR 提交时间较旧::${pkg} 的 AUR 版本未更新但提交时间早于同步基线，且内容不同，已跳过同步"
+                print_preview "$candidate_changes"
+                FAILED_PACKAGES+=("$pkg")
+                cleanup_tmp
+                continue
+              fi
+              echo "📝 检测到最终文件变更:"
+              print_preview "$candidate_changes"
+              CHANGED_PACKAGES+=("$pkg")
+              if [[ "$DRY_RUN" == true ]]; then
+                echo "🔍 [dry-run] 本地补丁已验证，但不提交"
+              else
+                echo "📥 同步 AUR 并保留本地修改..."
+                rsync "${RSYNC_ARGS[@]}" --out-format='%i %n%L' "$candidate_dir/" "$pkg_dir/"
                 UPDATED_PACKAGES+=("$pkg")
                 echo "✅ 已更新"
               fi
+            elif [[ -s "$patch_file" ]]; then
+              PRESERVED_PACKAGES+=("$pkg")
+              echo "✅ 已保留本地修改，无需提交"
             else
               echo "✔️  无变更"
             fi
 
-            rm -rf "$tmp_dir"
+            cleanup_tmp
           done
 
           # 输出结果摘要
@@ -127,10 +364,13 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "📊 同步结果摘要"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "检查包数: ${#PKG_LIST[@]}"
-          echo "有变更:   ${#CHANGED_PACKAGES[@]}"
-          echo "已更新:   ${#UPDATED_PACKAGES[@]}"
-          echo "失败:     ${#FAILED_PACKAGES[@]}"
+          echo "检查包数:       ${#PKG_LIST[@]}"
+          echo "有最终变更:     ${#CHANGED_PACKAGES[@]}"
+          echo "已更新:         ${#UPDATED_PACKAGES[@]}"
+          echo "已应用补丁:     ${#PATCHED_PACKAGES[@]}"
+          echo "已包含补丁:     ${#ALREADY_PATCHED_PACKAGES[@]}"
+          echo "保留且无需提交: ${#PRESERVED_PACKAGES[@]}"
+          echo "失败/需处理:    ${#FAILED_PACKAGES[@]}"
 
           if [[ ${#CHANGED_PACKAGES[@]} -gt 0 ]]; then
             echo ""
@@ -140,29 +380,37 @@ jobs:
             done
           fi
 
+          if [[ ${#PATCHED_PACKAGES[@]} -gt 0 ]]; then
+            echo ""
+            echo "已应用本地补丁的包:"
+            for p in "${PATCHED_PACKAGES[@]}"; do
+              echo "  - $p"
+            done
+          fi
+
           if [[ ${#FAILED_PACKAGES[@]} -gt 0 ]]; then
             echo ""
-            echo "失败的包:"
+            echo "失败或需要人工处理的包:"
             for p in "${FAILED_PACKAGES[@]}"; do
               echo "  - $p"
             done
           fi
 
           # 设置输出变量
-          echo "changed=${#CHANGED_PACKAGES[@]}" >> $GITHUB_OUTPUT
-          echo "updated=${#UPDATED_PACKAGES[@]}" >> $GITHUB_OUTPUT
-          echo "failed=${#FAILED_PACKAGES[@]}" >> $GITHUB_OUTPUT
+          echo "changed=${#CHANGED_PACKAGES[@]}" >> "$GITHUB_OUTPUT"
+          echo "updated=${#UPDATED_PACKAGES[@]}" >> "$GITHUB_OUTPUT"
+          echo "failed=${#FAILED_PACKAGES[@]}" >> "$GITHUB_OUTPUT"
 
           if [[ ${#CHANGED_PACKAGES[@]} -gt 0 ]]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
             # 生成 commit message
             COMMIT_MSG="⬆️ dep-bump(aur): 更新 ${#UPDATED_PACKAGES[@]} 个 AUR 包"
             if [[ ${#UPDATED_PACKAGES[@]} -le 5 ]]; then
               COMMIT_MSG="⬆️ dep-bump(aur): 更新 $(IFS=', '; echo "${UPDATED_PACKAGES[*]}")"
             fi
-            echo "commit_msg=${COMMIT_MSG}" >> $GITHUB_OUTPUT
+            echo "commit_msg=${COMMIT_MSG}" >> "$GITHUB_OUTPUT"
           else
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Stage AUR changes
