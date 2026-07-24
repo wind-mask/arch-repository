@@ -39,12 +39,19 @@ prepare() {
 
 build() {
     cmake -B 'build' -S "${_snapshot}" \
-        -DCMAKE_INSTALL_PREFIX=/usr
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_PREFIX_PATH=/usr \
+        -DOPENSSL_ROOT_DIR=/usr \
+        -DQT_NO_PRIVATE_MODULE_WARNING=ON
+        
 
     cmake --build 'build'
 
     cmake -B 'build-nox' -S "${_snapshot}" \
         -DCMAKE_INSTALL_PREFIX=/usr \
+        -DOPENSSL_ROOT_DIR=/usr \
+        -DCMAKE_PREFIX_PATH=/usr \
+        -DQT_NO_PRIVATE_MODULE_WARNING=ON \
         -DGUI=OFF \
         -DSYSTEMD=ON
 
