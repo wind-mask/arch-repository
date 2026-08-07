@@ -1,7 +1,7 @@
 # Maintainer: wind_mask <YOU KONW WHO>
 
 pkgname="zed-i18n-cn"
-pkgver=1.12.1
+pkgver=1.13.2
 pkgrel=1
 pkgdesc="Localization toolkit for Zed editor — extract, translate, and build multilingual releases"
 arch=('x86_64' 'aarch64')
@@ -12,8 +12,8 @@ conflicts=("zed")
 depends=('hicolor-icon-theme' 'zlib' 'alsa-lib' 'glib2' 'glibc' 'libxkbcommon' 'libbsd' 'libmd' 'libxcb' 'util-linux-libs' 'libffi')
 source_x86_64=("$pkgname-$pkgver.tar.gz::${url}/releases/download/v${pkgver}-i18n.1/zed-i18n-zh-CN-linux-x86_64.tar.gz")
 source_aarch64=("$pkgname-$pkgver.tar.gz::${url}/releases/download/v${pkgver}-i18n.1/zed-i18n-zh-CN-linux-aarch64.tar.gz")
-b2sums_x86_64=('46563f003463b82cd154bde214e34aede78352df64052425a4e0c1c56861e8c7204f555e80e423a756f0a6a94a3d28ac37a8981e4b4306862a5029cec594cd4a')
-b2sums_aarch64=('46563f003463b82cd154bde214e34aede78352df64052425a4e0c1c56861e8c7204f555e80e423a756f0a6a94a3d28ac37a8981e4b4306862a5029cec594cd4a')
+b2sums_x86_64=('f5a075fee2d149f2a310b2cc280966fac96526838152e1e362744be59cdc38c6f4cbca6ae5cbde26435b7bcb6c60464b60298f176be89e881b11b7195dcb893b')
+b2sums_aarch64=('f5a075fee2d149f2a310b2cc280966fac96526838152e1e362744be59cdc38c6f4cbca6ae5cbde26435b7bcb6c60464b60298f176be89e881b11b7195dcb893b')
 # 解压源码包
 prepare() {
   tar -xzf "$pkgname-$pkgver.tar.gz"
