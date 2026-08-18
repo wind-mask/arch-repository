@@ -6,7 +6,7 @@ pkgbase = wps-office-cn
 	arch = x86_64
 	license = LicenseRef-WPS-EULA
 	options = !emptydirs
-	source_x86_64 = wps-office_12.1.2.28080_amd64.deb::https://wps-linux-personal.wpscdn.cn/wps/download/ep/Linux2023/28080/wps-office_12.1.2.28080.AK.preread.sw.Personal_765474_amd64.deb?t=1786938883&k=747d63811db71a14cfb8cb5b0366c99c
+	source_x86_64 = wps-office_12.1.2.28080_amd64.deb::https://wps-linux-personal.wpscdn.cn/wps/download/ep/Linux2023/28080/wps-office_12.1.2.28080.AK.preread.sw.Personal_765474_amd64.deb?t=1787022210&k=68706f4f8fd3717d8b7c444f3984b72f
 	sha256sums_x86_64 = 2fa999f60a71e21093ab49ef6d7f61d7668c844bfebf30907d2c290e460f9be0
 
 pkgname = wps-office-cn
