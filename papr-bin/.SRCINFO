@@ -1,0 +1,23 @@
+pkgbase = papr-bin
+	pkgdesc = A fast, native RSS reader — plus an agent-facing CLI so your AI agent can read, search and triage your feeds from the shell.
+	pkgver = 0.15.0
+	pkgrel = 1
+	url = https://github.com/l0ng-ai/papr
+	arch = x86_64
+	license = MIT
+	depends = cairo
+	depends = gdk-pixbuf2
+	depends = glib2
+	depends = gtk3
+	depends = hicolor-icon-theme
+	depends = webkit2gtk-4.1
+	depends = libsoup3
+	depends = libxcb
+	depends = glibc
+	depends = gcc-libs
+	options = !strip
+	options = !debug
+	source_x86_64 = https://github.com/l0ng-ai/papr/releases/download/v0.15.0/papr_0.15.0_amd64.deb
+	sha256sums_x86_64 = 5114da0b6929dc94d30f6ab111284bc1d4c7e8546b253893a387d5f5566bfb00
+
+pkgname = papr-bin
