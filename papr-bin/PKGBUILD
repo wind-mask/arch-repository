@@ -1,0 +1,18 @@
+# Maintainer: wind_mask <YOU KONW WHO>
+pkgname=papr-bin
+_pkgname=papr
+pkgver=0.15.0
+pkgrel=1
+pkgdesc="A fast, native RSS reader — plus an agent-facing CLI so your AI agent can read, search and triage your feeds from the shell."
+arch=('x86_64')
+url="https://github.com/l0ng-ai/${_pkgname}"
+license=('MIT')
+depends=('cairo'  'gdk-pixbuf2' 'glib2' 'gtk3' 'hicolor-icon-theme' 'webkit2gtk-4.1' 'libsoup3' 'libxcb' 'glibc' 'gcc-libs')
+options=('!strip' '!debug')
+source_x86_64=("${url}/releases/download/v${pkgver//_/-}/${_pkgname}_${pkgver}_amd64.deb")
+sha256sums_x86_64=('5114da0b6929dc94d30f6ab111284bc1d4c7e8546b253893a387d5f5566bfb00')
+package() {
+  # Extract package data
+  tar -xvf data.tar.gz -C "${pkgdir}"
+
+}
