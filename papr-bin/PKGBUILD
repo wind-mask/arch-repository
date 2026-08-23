@@ -1,6 +1,8 @@
 # Maintainer: wind_mask <YOU KONW WHO>
 pkgname=papr-bin
 _pkgname=papr
+provides=('papr')
+conflicts=('papr')
 pkgver=0.15.0
 pkgrel=1
 pkgdesc="A fast, native RSS reader — plus an agent-facing CLI so your AI agent can read, search and triage your feeds from the shell."
