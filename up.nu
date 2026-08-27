@@ -38,9 +38,12 @@ def main [] {
 }
 
 # 获取 github 参考的latest release的name（非tag name）
-export def gh_latest_release [user_repo: string]: any -> string { # nu-lint-ignore: kebab_case_commands
+export def gh_latest_release [
+  user_repo: string,
+  field = "name" :string
+]: any -> string { # nu-lint-ignore: kebab_case_commands
   try {
-  let v_name = (gh api repos/($user_repo)/releases/latest | from json| get name)
+  let v_name = (gh api repos/($user_repo)/releases/latest | from json| get --optional $field)
   return $v_name
       } catch {|err|
       error make {msg: $err.msg} # nu-lint-ignore: add_label_to_error
