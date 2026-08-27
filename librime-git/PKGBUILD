@@ -22,7 +22,12 @@ source=("git+https://github.com/rime/librime.git"
         "git+https://github.com/rime/librime-charcode.git"
         "git+https://github.com/lotem/librime-proto.git"
         "git+https://github.com/rime/librime-predict.git")
-sha512sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha512sums=('SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP')
 
 pkgver() {
   cd "$_pkgname"
