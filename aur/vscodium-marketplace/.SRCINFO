@@ -1,0 +1,25 @@
+pkgbase = vscodium-marketplace
+	pkgdesc = Enable vscode marketplace in vscodium
+	pkgver = 1.116.02821
+	pkgrel = 1
+	url = https://marketplace.visualstudio.com/vscode
+	install = vscodium-marketplace.install
+	arch = any
+	license = unknown
+	depends = vscodium
+	depends = python
+	provides = vscodium-marketplace
+	conflicts = vscodium-all-marketplace
+	conflicts = vscodium-bin-marketplace
+	conflicts = vscodium-electron-marketplace
+	conflicts = vscodium-electron-bin-marketplace
+	conflicts = vscodium-git-marketplace
+	conflicts = vscodium-insiders-marketplace
+	conflicts = vscodium-insiders-bin-marketplace
+	conflicts = vscodium-translucent-marketplace
+	source = vscodium-marketplace.hook
+	source = patch.py
+	sha512sums = 7a441ccba1c39f4ca1eeeecd9c1c434ac478bcebe0666d45bfd860ef47e6e4f8f24ff7f70f00fa7cc06efa49a706535a449ea5a1dddbd6658c930aff6ad66d95
+	sha512sums = 7f172dc9318b3a19b774e5062d2f467dcf179fdaac5cc0bb5f33ad218b07dc820c1c7141d024ed8b31f52e6d6f18e2b8e0111626d85703a536d30aa8e3187015
+
+pkgname = vscodium-marketplace
