@@ -1,0 +1,16 @@
+pkgbase = rmw
+	pkgdesc = trash/recycle bin utility for the command line
+	pkgver = 0.10.0
+	pkgrel = 1
+	url = https://theimpossibleastronaut.com/rmw-website/
+	arch = x86_64
+	license = GPL-3.0-or-later
+	makedepends = meson
+	makedepends = ninja
+	depends = canfigger
+	depends = glib2
+	depends = ncurses
+	source = https://github.com/theimpossibleastronaut/rmw/releases/download/v0.10.0/rmw-0.10.0.tar.xz
+	sha256sums = 8f96fd96831b69bffc8019cb000483ffe92a7764765484df57f63a6515d26fd9
+
+pkgname = rmw
