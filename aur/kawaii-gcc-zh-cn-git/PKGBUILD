@@ -3,7 +3,7 @@
 
 _pkgname=kawaii-gcc
 pkgname="$_pkgname-zh-cn-git"
-pkgver=r35.3b43056
+pkgver=r36.6c8d2d4
 pkgrel=1
 provides=('kawaii-gcc-zh-cn')
 conflicts=('kawaii-gcc-zh-cn')
