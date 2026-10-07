@@ -1,0 +1,23 @@
+pkgbase = activitywatch-tauri-bin
+	pkgdesc = Track how you spend time on your computer. Simple, extensible, no third parties.
+	pkgver = 0.14.0
+	pkgrel = 1
+	url = https://github.com/ActivityWatch/activitywatch
+	arch = x86_64
+	license = MPL2
+	depends = cairo
+	depends = gdk-pixbuf2
+	depends = glib2
+	depends = gtk3
+	depends = hicolor-icon-theme
+	depends = webkit2gtk-4.1
+	depends = libsoup3
+	depends = libxcb
+	depends = glibc
+	depends = gcc-libs
+	provides = activitywatch
+	conflicts = activitywatch
+	source = https://github.com/ActivityWatch/activitywatch/releases/download/v0.14.0/activitywatch-tauri-v0.14.0-linux-x86_64.zip
+	md5sums = 940e9e64860488614da543f4335ec986
+
+pkgname = activitywatch-tauri-bin
