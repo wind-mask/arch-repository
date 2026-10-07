@@ -1,0 +1,92 @@
+# Maintainer: wind_mask <YOU KNOW WHO>
+# Contributor: Erik Bjäreholt <erik@bjareho.lt>
+# Contributor: Johan Bjäreholt <johan@bjareho.lt>
+
+# PRs welcome at: https://github.com/ActivityWatch/aur-activitywatch-bin
+
+pkgname=activitywatch-tauri-bin
+_pkgname=activitywatch
+pkgver='0.14.0'
+pkgrel=1
+epoch=
+pkgdesc="Track how you spend time on your computer. Simple, extensible, no third parties."
+arch=('x86_64')
+url="https://github.com/ActivityWatch/activitywatch"
+license=('MPL2')
+provides=("activitywatch")
+conflicts=("activitywatch")
+makedepends=()
+depends=(
+    'cairo'  'gdk-pixbuf2' 'glib2' 'gtk3' 'hicolor-icon-theme' 'webkit2gtk-4.1' 'libsoup3' 'libxcb' 'glibc' 'gcc-libs'
+    #'qt5-base'
+    #'qt5-svg'
+    #'gtk3'
+    #'openssl-1.0'
+)
+# https://github.com/ActivityWatch/activitywatch/releases/download/v0.14.0/activitywatch-tauri-v0.14.0-linux-x86_64.zip
+source=("https://github.com/ActivityWatch/activitywatch/releases/download/v${pkgver}/activitywatch-tauri-v${pkgver}-linux-x86_64.zip")
+md5sums=('940e9e64860488614da543f4335ec986')
+
+package() {
+    # Install into /opt/activitywatch
+    mkdir -p $pkgdir/opt
+    ar x $_pkgname/aw-tauri/aw-tauri.deb
+    tar -xvf data.tar.gz -C "${pkgdir}"
+    rm $_pkgname/aw-tauri -r
+    cp -r $_pkgname $pkgdir/opt
+
+    # Symlink executables to /usr/bin
+    # mkdir -p $pkgdir/usr/bin
+    # execnames=("aw-qt")
+    # for name in "${execnames[@]}"; do
+    #     ln -s /opt/activitywatch/$name $pkgdir/usr/bin/$name
+    # done
+
+    modulenames=("aw-watcher-afk" "aw-watcher-window" "aw-watcher-input" "aw-notify" "aw-server-rust/aw-sync" "awatcher/aw-awatcher")
+    for name in "${modulenames[@]}"; do
+        # if a module has a path, use that,
+        # else assume its in a dir with the same name as the module
+        dir=$(dirname $name)
+        if [ "$dir" == "." ]; then
+            dir=$name
+        else
+            # strip the path from the name
+            name=$(basename $name)
+        fi
+        # check that the module exists
+        if [ ! -f "$pkgdir/opt/$_pkgname/$dir/$name" ]; then
+            echo "WARNING: $dir/$name does not exist, skipping"
+            continue
+        fi
+        echo "ln $dir/$name"
+        ln -s /opt/activitywatch/$dir/$name $pkgdir/usr/bin/$name
+    done
+
+    # # Add .desktop file for autostart
+    # mkdir -p $pkgdir/etc/xdg/autostart
+    # cp activitywatch/aw-qt.desktop $pkgdir/etc/xdg/autostart
+
+    # See: https://aur.archlinux.org/packages/activitywatch-bin/#comment-834170
+    #rm $pkgdir/opt/activitywatch/libharfbuzz.so*
+    #rm $pkgdir/opt/activitywatch/libfreetype.so*
+    #rm $pkgdir/opt/activitywatch/libfontconfig.so*
+
+    # These takes a lot of space, getting rid of them would be nice
+    #rm $pkgdir/opt/activitywatch/libicu*.so*
+
+    # One or more of these is making aw-qt SEGFAULT
+    #rm $pkgdir/opt/activitywatch/libreadline.so*
+    #rm $pkgdir/opt/activitywatch/libssl.so*
+    #rm $pkgdir/opt/activitywatch/libavahi*.so*
+    #rm $pkgdir/opt/activitywatch/libQt5*.so*
+    #rm $pkgdir/opt/activitywatch/libstdc++.so*
+    #rm $pkgdir/opt/activitywatch/libgpg-error.so*
+    #rm $pkgdir/opt/activitywatch/libz.so*
+    #rm $pkgdir/opt/activitywatch/libX*.so*
+    #rm $pkgdir/opt/activitywatch/libxcb*.so*
+    #rm $pkgdir/opt/activitywatch/libwayland*.so*
+    #rm $pkgdir/opt/activitywatch/libpng*.so*
+    #rm $pkgdir/opt/activitywatch/libgtk*.so*
+    #rm $pkgdir/opt/activitywatch/libgnutls*.so*
+    #rm $pkgdir/opt/activitywatch/libcairo*.so*
+}
