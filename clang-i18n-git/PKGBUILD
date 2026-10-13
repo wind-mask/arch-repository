@@ -1,0 +1,43 @@
+# Maintainer: wind_mask <YOU KNOW WHO>
+_pkgname=clang-i18n
+pkgname=clang-i18n-git
+pkgver=20260406.r0.g2f8bdea
+pkgrel=2
+pkgdesc="Clang wrapper with i18n support."
+arch=('x86_64' 'aarch64')
+url="https://github.com/dtcxzyw/clang-i18n"
+license=('MIT')
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+depends=(
+  'llvm-libs'
+  'libstdc++'
+  'clang'
+)
+makedepends=('git' 'cmake' 'llvm')
+source=("git+${url}.git"
+        "clang-i18n-hook-3arg-formatdiagnostic.patch")
+b2sums=('SKIP'
+        'b6f63114a7a04eb36a9d345a2e2647ffabc64283fe94ac0dc7cd2ad954e2730d93a37c8d42622490b8aaddbe3390ec9ee5bed7196de12089f273972a9cc09ebe')
+
+pkgver() {
+    cd "$_pkgname"
+    git describe --long --abbrev=7 --tags | sed 's/^clang-i18n-//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd "$_pkgname"
+  patch -Np1 -i "$srcdir/clang-i18n-hook-3arg-formatdiagnostic.patch"
+}
+
+build() {
+  cd "$_pkgname"
+  mkdir -p build && cd build
+  cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+  cmake --build . -j
+}
+
+package() {
+  cd "$_pkgname"
+  DESTDIR="$pkgdir" cmake --install build
+}
