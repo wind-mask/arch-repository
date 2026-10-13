@@ -1,0 +1,22 @@
+pkgbase = clang-i18n-git
+	pkgdesc = Clang wrapper with i18n support.
+	pkgver = 20260406.r0.g2f8bdea
+	pkgrel = 2
+	url = https://github.com/dtcxzyw/clang-i18n
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	makedepends = git
+	makedepends = cmake
+	makedepends = llvm
+	depends = llvm-libs
+	depends = libstdc++
+	depends = clang
+	provides = clang-i18n
+	conflicts = clang-i18n
+	source = git+https://github.com/dtcxzyw/clang-i18n.git
+	source = clang-i18n-hook-3arg-formatdiagnostic.patch
+	b2sums = SKIP
+	b2sums = b6f63114a7a04eb36a9d345a2e2647ffabc64283fe94ac0dc7cd2ad954e2730d93a37c8d42622490b8aaddbe3390ec9ee5bed7196de12089f273972a9cc09ebe
+
+pkgname = clang-i18n-git
