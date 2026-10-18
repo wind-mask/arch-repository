@@ -1,6 +1,6 @@
 pkgbase = zed-i18n-cn
 	pkgdesc = Localization toolkit for Zed editor — extract, translate, and build multilingual releases
-	pkgver = 1.22.0
+	pkgver = 1.24.3
 	pkgrel = 1
 	url = https://github.com/LI-NA/zed-i18n
 	arch = x86_64
@@ -20,9 +20,9 @@ pkgbase = zed-i18n-cn
 	provides = zed
 	conflicts = zed
 	options = !debug
-	source_x86_64 = zed-i18n-cn-1.22.0.tar.gz::https://github.com/LI-NA/zed-i18n/releases/download/v1.22.0-i18n.1/zed-i18n-linux-x86_64.tar.gz
-	b2sums_x86_64 = a033e14f8dcedd1c46c157db0b5a63cb3b1808bb5a59cbe11093f763d65414d66131b961d6a333577eff688dc90cde31554ec0976c532ceaac2bc38135eb4003
-	source_aarch64 = zed-i18n-cn-1.22.0.tar.gz::https://github.com/LI-NA/zed-i18n/releases/download/v1.22.0-i18n.1/zed-i18n-linux-aarch64.tar.gz
-	b2sums_aarch64 = a033e14f8dcedd1c46c157db0b5a63cb3b1808bb5a59cbe11093f763d65414d66131b961d6a333577eff688dc90cde31554ec0976c532ceaac2bc38135eb4003
+	source_x86_64 = zed-i18n-cn-1.24.3.tar.gz::https://github.com/LI-NA/zed-i18n/releases/download/v1.24.3-i18n.1/zed-i18n-linux-x86_64.tar.gz
+	b2sums_x86_64 = 29704bbaa843f955fe5ba11d7ceac4e7318cb7357d94a5ae0926b03c45f52407bbf833c56da1cfc5590786b70a93d3bde0728778510c198db8020b07cdb2166b
+	source_aarch64 = zed-i18n-cn-1.24.3.tar.gz::https://github.com/LI-NA/zed-i18n/releases/download/v1.24.3-i18n.1/zed-i18n-linux-aarch64.tar.gz
+	b2sums_aarch64 = 29704bbaa843f955fe5ba11d7ceac4e7318cb7357d94a5ae0926b03c45f52407bbf833c56da1cfc5590786b70a93d3bde0728778510c198db8020b07cdb2166b
 
 pkgname = zed-i18n-cn
