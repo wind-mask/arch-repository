@@ -1,7 +1,7 @@
 # Maintainer: wind_mask <YOU KONW WHO>
 
 pkgname="zed-i18n-cn"
-pkgver=1.25.3
+pkgver=1.28.1
 pkgrel=1
 pkgdesc="Localization toolkit for Zed editor — extract, translate, and build multilingual releases"
 arch=('x86_64' 'aarch64')
