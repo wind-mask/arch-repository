@@ -2,7 +2,7 @@
 
 pkgname=luciole-git
 _pkgname=luciole
-pkgver=0.1.0.r0.g000000000
+pkgver=0.1.0.r343.g838567515
 pkgrel=1
 pkgdesc='A smooth, native Wayland file manager with fast previews, tabs, split view and Miller columns'
 arch=('x86_64' 'aarch64')
