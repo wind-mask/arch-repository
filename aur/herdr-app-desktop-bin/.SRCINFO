@@ -1,0 +1,29 @@
+pkgbase = herdr-app-desktop-bin
+	pkgdesc = Native desktop workspace for terminals and coding agents that keep running (prebuilt)
+	pkgver = 0.1.16
+	pkgrel = 1
+	url = https://herdr.dev
+	arch = x86_64
+	arch = aarch64
+	license = Apache-2.0
+	depends = gcc-libs
+	depends = glibc
+	depends = hicolor-icon-theme
+	depends = libglvnd
+	depends = libxcb
+	depends = libxkbcommon
+	depends = libxkbcommon-x11
+	depends = vulkan-icd-loader
+	depends = wayland
+	optdepends = hc-bin: herdr-core background server (the app offers to fetch it on first run)
+	provides = herdr-app=0.1.16
+	conflicts = herdr-app-bin
+	conflicts = herdr-app
+	options = !strip
+	options = !debug
+	source_x86_64 = herdr-app-desktop-bin-0.1.16-x86_64.tar.gz::https://releases.herdr.dev/app/0.1.16/herdr-app-linux-x86_64.tar.gz
+	sha256sums_x86_64 = 282d2632196b238206cfe66bfb61c0faf299ca1c91843bd076521bbe36571216
+	source_aarch64 = herdr-app-desktop-bin-0.1.16-aarch64.tar.gz::https://releases.herdr.dev/app/0.1.16/herdr-app-linux-aarch64.tar.gz
+	sha256sums_aarch64 = efeef4f1759b0e8900f205c2c22b14287a112f874406539b4ea1b3be24b73631
+
+pkgname = herdr-app-desktop-bin
