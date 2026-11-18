@@ -15,4 +15,3 @@ pkgbase = cachefilesd
 	sha256sums = 29a6110608dda5b13549bdf6975307151643d203455c0fd3f3707272df5850ac
 
 pkgname = cachefilesd
-
